@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqc-maze"
+version = "1.0.0"
+description = "A crypto-agility layer + a classical-crypto maze, to be broken by a simulated Shor's algorithm and then migrated to post-quantum crypto."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "CGovS" }]
+keywords = ["post-quantum", "cryptography", "crypto-agility", "shor", "rsa", "ml-kem"]
+
+# Phase 1 has NO runtime dependencies — it is pure standard-library Python,
+# so the maze reproduces anywhere with just Python 3.11+.
+dependencies = []
+
+[project.optional-dependencies]
+# Phase 2 — the simulated Shor attacker (installed when we reach it).
+attacker = ["qiskit==1.2.4", "qiskit-aer==0.15.1"]
+# Phase 4 — the post-quantum migration (installed when we reach it).
+pqc = ["liboqs-python==0.10.0"]
+dev = ["pytest==8.3.3"]
+
+[project.scripts]
+maze = "maze.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cryptolayer*", "maze*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

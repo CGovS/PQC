@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PQC · Crypto-Agility, Proven</title>
+<script src="attack_data.js"></script>
+<style>
+  :root{
+    --bg:#070b12; --bg2:#0b111c; --panel:#0e1626; --panel2:#111c30;
+    --ink:#e6edf7; --dim:#8ba0bd; --faint:#5b6f8f;
+    --cyan:#22d3ee; --cyan-dim:#0e7490;
+    --red:#fb5570; --red-dim:#7f1d2e;
+    --green:#34d399; --green-dim:#12604a;
+    --amber:#f7b955;
+    --grid:rgba(120,160,220,.06);
+    --mono:"SF Mono",ui-monospace,"Menlo",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--bg);
+    background-image:
+      radial-gradient(1200px 600px at 15% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(251,85,112,.08), transparent 55%),
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:auto,auto,44px 44px,44px 44px;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px 90px}
+  header.top{
+    position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
+    background:linear-gradient(180deg,rgba(7,11,18,.92),rgba(7,11,18,.55));
+    border-bottom:1px solid rgba(120,160,220,.12);
+  }
+  .top-in{max-width:1120px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{font-family:var(--mono);font-weight:700;letter-spacing:.5px;font-size:15px}
+  .brand .q{color:var(--cyan)}
+  .tag{font-size:12px;color:var(--dim)}
+  .pills{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid rgba(120,160,220,.2);color:var(--dim)}
+  .pill.on{color:var(--green);border-color:var(--green-dim);background:rgba(52,211,153,.08)}
+
+  .hero{padding:54px 0 26px;text-align:center}
+  .hero h1{font-size:clamp(28px,4.5vw,46px);margin:0 0 10px;line-height:1.08;letter-spacing:-.5px}
+  .hero h1 .grad{background:linear-gradient(90deg,var(--cyan),#a78bfa 55%,var(--red));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--dim);max-width:640px;margin:0 auto;font-size:16px}
+  .hero .thesis{margin-top:14px;font-family:var(--mono);font-size:12.5px;color:var(--faint)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+
+  .vault{position:relative;border-radius:16px;padding:20px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(120,160,220,.14);overflow:hidden;transition:border-color .4s,box-shadow .4s}
+  .vault.before{--accent:var(--red);--accent-dim:var(--red-dim)}
+  .vault.after{--accent:var(--green);--accent-dim:var(--green-dim)}
+  .vault.cracked{border-color:var(--red);box-shadow:0 0 0 1px rgba(251,85,112,.4),0 20px 60px -30px rgba(251,85,112,.7)}
+  .vault.held{border-color:var(--green);box-shadow:0 0 0 1px rgba(52,211,153,.35),0 20px 60px -30px rgba(52,211,153,.6)}
+  .vhead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .vhead h2{font-size:18px;margin:0}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.4px;padding:4px 9px;border-radius:999px;border:1px solid var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);white-space:nowrap}
+  .sub{color:var(--dim);font-size:13px;margin:2px 0 14px}
+  .facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .fact{font-family:var(--mono);font-size:11.5px;color:var(--dim);background:rgba(120,160,220,.07);border:1px solid rgba(120,160,220,.12);padding:5px 9px;border-radius:8px}
+  .fact b{color:var(--ink);font-weight:600}
+  .blob{font-family:var(--mono);font-size:11px;color:var(--faint);background:#060a11;border:1px solid rgba(120,160,220,.12);border-radius:9px;padding:9px 11px;max-height:64px;overflow:auto;word-break:break-all;margin-bottom:14px}
+
+  .lockrow{display:flex;align-items:center;gap:12px;margin:4px 0 16px}
+  .lockicon{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:10px;background:rgba(120,160,220,.08);border:1px solid rgba(120,160,220,.16);color:var(--accent);transition:.4s}
+  .lockicon svg{width:20px;height:20px}
+  .lockstate{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+  .lockstate small{display:block;color:var(--dim);font-weight:400;font-size:11px;letter-spacing:0}
+
+  button.launch{width:100%;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.3px;color:#04121a;
+    background:linear-gradient(90deg,var(--cyan),#67e8f9);border:0;padding:12px 14px;border-radius:10px;cursor:pointer;transition:.2s;box-shadow:0 8px 24px -12px rgba(34,211,238,.8)}
+  button.launch:hover{transform:translateY(-1px);box-shadow:0 12px 30px -12px rgba(34,211,238,.9)}
+  button.launch:disabled{opacity:.5;cursor:progress;transform:none}
+
+  .console{margin-top:14px;font-family:var(--mono);font-size:11.5px;border-top:1px dashed rgba(120,160,220,.16);padding-top:12px;min-height:8px;display:none}
+  .console.show{display:block}
+  .line{opacity:0;transform:translateY(4px);animation:rise .34s forwards;padding:2px 0;color:var(--dim);display:flex;gap:8px}
+  .line .mk{color:var(--cyan)}
+  .line.ok .mk{color:var(--green)} .line.ok{color:var(--ink)}
+  .line.hot .mk{color:var(--red)} .line.hot{color:#ffd7de}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  .qft{margin:12px 0 6px;height:120px;position:relative;background:linear-gradient(180deg,#060a11,#0a1120);border:1px solid rgba(120,160,220,.14);border-radius:10px;overflow:hidden}
+  .qft .axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:rgba(120,160,220,.18)}
+  .qbar{position:absolute;bottom:1px;width:5px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--cyan),rgba(34,211,238,.15));box-shadow:0 0 10px rgba(34,211,238,.55);height:0;transition:height .7s cubic-bezier(.2,.8,.2,1)}
+  .qbar.pk{background:linear-gradient(180deg,#fb5570,rgba(251,85,112,.2));box-shadow:0 0 14px rgba(251,85,112,.8)}
+  .qcap{position:absolute;top:8px;left:10px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .qcap b{color:var(--cyan)}
+
+  .reveal{margin-top:12px;font-family:var(--mono);font-size:14px;color:var(--red);background:rgba(251,85,112,.08);border:1px solid var(--red-dim);border-radius:10px;padding:12px 13px;display:none}
+  .reveal.show{display:block}
+  .reveal .k{color:var(--dim);font-size:11px;display:block;margin-bottom:4px}
+  .held-note{margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--green);background:rgba(52,211,153,.07);border:1px solid var(--green-dim);border-radius:10px;padding:11px 12px;display:none}
+  .held-note.show{display:block}
+
+  section.band{margin-top:40px;border-radius:16px;padding:22px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(120,160,220,.14)}
+  section.band h3{margin:0 0 4px;font-size:16px}
+  section.band p.k{color:var(--dim);font-size:13px;margin:0 0 16px}
+  .scale-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-family:var(--mono);font-size:12px}
+  .scale-row .name{width:150px;color:var(--dim);flex:none}
+  .scale-row .track{flex:1;height:16px;border-radius:6px;background:rgba(120,160,220,.08);overflow:hidden;border:1px solid rgba(120,160,220,.12)}
+  .scale-row .fill{height:100%;border-radius:6px}
+  .scale-row .fill.toy{background:linear-gradient(90deg,var(--green),#6ee7b7)}
+  .scale-row .fill.real{background:linear-gradient(90deg,var(--red),#fca5b5)}
+  .scale-row .val{width:230px;flex:none;color:var(--ink)}
+  .caption{color:var(--faint);font-size:12px;margin-top:12px;line-height:1.6}
+
+  .mig{margin-top:20px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;border-radius:16px;padding:20px 22px;background:linear-gradient(90deg,rgba(34,211,238,.06),rgba(167,139,250,.05));border:1px solid rgba(120,160,220,.16)}
+  @media(max-width:640px){.mig{grid-template-columns:1fr}}
+  .mig .big{font-family:var(--mono);font-size:44px;font-weight:800;color:var(--cyan);line-height:1;text-align:center}
+  .mig .big small{display:block;font-size:11px;color:var(--dim);font-weight:500;margin-top:6px;letter-spacing:.3px}
+  .mig code{display:block;font-family:var(--mono);font-size:12.5px;color:#cbd5e1;background:#060a11;border:1px solid rgba(120,160,220,.14);border-radius:9px;padding:11px 13px;margin-top:8px;overflow:auto}
+  .mig .lbl{font-size:14px}
+  .mig .lbl b{color:var(--ink)}
+
+  footer{margin-top:40px;color:var(--faint);font-size:12px;line-height:1.7;border-top:1px solid rgba(120,160,220,.12);padding-top:20px}
+  footer b{color:var(--dim)}
+  .warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <span class="brand"><span class="q">PQC</span> · crypto-agility</span>
+    <span class="tag">classical → post-quantum, proven end to end</span>
+    <span class="pills">
+      <span class="pill on">1 · agility layer</span>
+      <span class="pill on">2 · Shor sim</span>
+      <span class="pill on">3 · break</span>
+      <span class="pill on">4 · ML-KEM</span>
+      <span class="pill on">5 · holds</span>
+    </span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Same app. Same attacker.<br><span class="grad">One line of migration.</span></h1>
+    <p>A secret is sealed by classical RSA, then a simulated quantum computer runs
+       Shor's algorithm and opens it. Swap one registry name to ML-KEM — no app code changes —
+       and the identical attack has nothing to break.</p>
+    <div class="thesis">the hard part of post-quantum isn't the algorithms — it's that software hardcodes its crypto. this is the seam that fixes it.</div>
+  </div>
+
+  <div class="grid2">
+    <!-- BEFORE -->
+    <div class="vault before" id="v-before">
+      <div class="vhead"><h2>Before · Classical RSA</h2><span class="badge" id="b-badge">QUANTUM-VULNERABLE</span></div>
+      <div class="sub" id="b-sub">integer factoring · broken by Shor's algorithm</div>
+      <div class="facts" id="b-facts"></div>
+      <div class="blob" id="b-blob"></div>
+      <div class="lockrow">
+        <div class="lockicon" id="b-icon">$LOCK$</div>
+        <div class="lockstate" id="b-state">SEALED<small>attacker holds only the public key</small></div>
+      </div>
+      <button class="launch" id="b-launch">▶ Launch Shor's attack</button>
+      <div class="qft" id="b-qft" style="display:none"><div class="qcap" id="b-qcap"></div><div class="axis"></div></div>
+      <div class="console" id="b-con"></div>
+      <div class="reveal" id="b-reveal"></div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="vault after" id="v-after">
+      <div class="vhead"><h2>After · ML-KEM-768</h2><span class="badge" id="a-badge">QUANTUM-RESISTANT</span></div>
+      <div class="sub" id="a-sub">Module-LWE lattice · FIPS 203</div>
+      <div class="facts" id="a-facts"></div>
+      <div class="blob" id="a-blob"></div>
+      <div class="lockrow">
+        <div class="lockicon" id="a-icon">$LOCK$</div>
+        <div class="lockstate" id="a-state">SEALED<small>same secret, one-line algorithm swap</small></div>
+      </div>
+      <button class="launch" id="a-launch">▶ Launch the same attack</button>
+      <div class="console" id="a-con"></div>
+      <div class="held-note" id="a-held"></div>
+    </div>
+  </div>
+
+  <!-- REALITY CHECK -->
+  <section class="band">
+    <h3>Reality check — why the live break is a toy, and why it still proves the point</h3>
+    <p class="k">A statevector simulator holds 2^(qubits) amplitudes. The maze moduli are simulable; real RSA is not — by a wide margin. The scaling argument, not the tiny break, is what generalizes.</p>
+    <div id="scale"></div>
+    <div class="caption" id="scale-cap"></div>
+  </section>
+
+  <!-- MIGRATION -->
+  <div class="mig">
+    <div class="big" id="mig-num">0<small>app code lines changed</small></div>
+    <div class="lbl">
+      <div class="lbl">The maze never named an algorithm — it asked the registry for one. <b>Migrating classical → post-quantum is a single registration:</b></div>
+      <code id="mig-code"></code>
+    </div>
+  </div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+const UNLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>';
+document.querySelectorAll('.lockicon').forEach(e=>e.innerHTML=LOCK);
+
+const D = window.ATTACK;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const $ = id => document.getElementById(id);
+const fmtBytes = n => n>=1024 ? (n/1024).toFixed(2)+' KB' : n+' B';
+
+function boot(){
+  if(!D){ $('foot').textContent='attack_data.js not found — run: python -m attacker.report'; return; }
+  const b=D.before, a=D.after;
+
+  // BEFORE facts
+  $('b-facts').innerHTML = [
+    `modulus <b>n=${b.n}</b>`, `exponent <b>e=${b.e}</b>`,
+    `<b>${b.bits}</b>-bit key`, `${b.note}`
+  ].map(t=>`<span class="fact">${t}</span>`).join('');
+  $('b-blob').textContent = b.ciphertext;
+
+  // AFTER facts
+  $('a-facts').innerHTML = [
+    `pub key <b>${fmtBytes(a.public_bytes)}</b>`, `secret key <b>${fmtBytes(a.private_bytes)}</b>`,
+    `ciphertext <b>${fmtBytes(a.ciphertext_bytes)}</b>`, `KEM-DEM hybrid`
+  ].map(t=>`<span class="fact">${t}</span>`).join('');
+  $('a-blob').textContent = a.ciphertext_preview + ' …';
+
+  // scaling
+  const toy=D.resources.toy, real=D.resources.rsa2048;
+  const logq_toy=toy.logical_qubits_approx, logq_real=real.logical_qubits_approx;
+  const lg = v => Math.log10(v);
+  const pct = v => (lg(v)/lg(logq_real)*100).toFixed(1);
+  $('scale').innerHTML = `
+    <div class="scale-row"><span class="name">maze n=${b.n}</span>
+      <span class="track"><span class="fill toy" style="width:${pct(logq_toy)}%"></span></span>
+      <span class="val">~${logq_toy} logical qubits · simulable</span></div>
+    <div class="scale-row"><span class="name">RSA-2048 (real)</span>
+      <span class="track"><span class="fill real" style="width:100%"></span></span>
+      <span class="val">~${logq_real} logical qubits · not simulable</span></div>`;
+  $('scale-cap').innerHTML = `The maze factorization runs in a <b>2^${toy.statevector_amplitudes.split('^')[1]}</b>-amplitude statevector on a laptop.
+    RSA-2048 would need a <b>2^${real.statevector_amplitudes.split('^')[1]}</b>-amplitude state (impossible classically) and, on real hardware, thousands of
+    <i>logical</i> qubits behind millions of physical ones with error correction — none of which exists today.
+    <span class="warn">The threat is "harvest now, decrypt later," not an imminent machine.</span>`;
+
+  // migration
+  $('mig-num').innerHTML = D.migration.application_code_changes + '<small>app code lines changed</small>';
+  $('mig-code').textContent = D.migration.registry_line;
+
+  $('foot').innerHTML = `<b>Secret under seal:</b> <span style="font-family:var(--mono)">${D.secret_plaintext}</span><br>
+    <b>Honest constraints:</b> the RSA here is a deliberately weak toy (n∈{15,21,35}) so a classical Shor simulation can factor it; the ML-KEM is the real FIPS 203 primitive via the <i>kyber-py</i> reference implementation with a stdlib DEM (production would use AES-GCM). Apache-2.0.`;
+}
+
+async function attackBefore(){
+  const btn=$('b-launch'); btn.disabled=true; btn.textContent='running…';
+  const c=$('b-con'); c.classList.add('show'); c.innerHTML='';
+  const at=D.before.attack;
+  const add=(txt,cls='')=>{ const d=document.createElement('div'); d.className='line '+cls; d.innerHTML=`<span class="mk">▸</span><span>${txt}</span>`; c.appendChild(d); };
+
+  add(`booting simulated quantum computer — ${at.counting_qubits} counting + ${at.work_qubits} work qubits (${at.resource_estimate.statevector_amplitudes} amplitudes)`); await sleep(650);
+  add(`choosing base a=${at.a} · gcd(${at.a}, ${at.N}) = 1 ✓ coprime`,'ok'); await sleep(650);
+  add(`preparing superposition  Σ|x⟩ |${at.a}^x mod ${at.N}⟩  over ${at.M} states`); await sleep(500);
+
+  // QFT viz
+  const qft=$('b-qft'); qft.style.display='block';
+  $('b-qcap').innerHTML=`quantum Fourier transform · interference peaks → period <b>r</b>`;
+  const peaks=at.peaks, maxP=Math.max(...peaks.map(p=>p[1]));
+  const W=qft.clientWidth-14;
+  peaks.forEach(([cc,pp],i)=>{
+    const bar=document.createElement('div'); bar.className='qbar'+(cc===at.measured_c?' pk':'');
+    bar.style.left=(7+(cc/at.M)*W)+'px'; qft.appendChild(bar);
+    setTimeout(()=>{ bar.style.height=(8+(pp/maxP)*92)+'px'; }, 120+i*45);
+  });
+  await sleep(1300);
+  add(`measured c = ${at.measured_c} / ${at.M}  →  continued fraction  →  period r = ${at.period}`,'ok'); await sleep(750);
+  add(`r is even · ${at.a}^(r/2) mod ${at.N} = ${at.half_exp} ≠ −1 ✓`,'ok'); await sleep(750);
+  add(`gcd(${at.half_exp}−1, ${at.N}) = ${at.factors[0]}   ·   gcd(${at.half_exp}+1, ${at.N}) = ${at.factors[1]}`,'hot'); await sleep(700);
+  add(`n = ${at.factors[0]} × ${at.factors[1]}  →  recovered private exponent d = ${at.recovered_d}`,'hot'); await sleep(700);
+
+  // crack the vault
+  $('v-before').classList.add('cracked');
+  $('b-icon').innerHTML=UNLOCK; $('b-icon').style.color='var(--red)';
+  $('b-state').innerHTML='CRACKED<small>private key reconstructed from the public key alone</small>';
+  const rv=$('b-reveal'); rv.classList.add('show');
+  rv.innerHTML=`<span class="k">vault opened — secret recovered:</span><span id="typ"></span>`;
+  const target=at.revealed, tp=$('typ');
+  for(let i=0;i<=target.length;i++){ tp.textContent=target.slice(0,i); await sleep(22); }
+  btn.textContent='vault cracked';
+}
+
+async function attackAfter(){
+  const btn=$('a-launch'); btn.disabled=true; btn.textContent='running…';
+  const c=$('a-con'); c.classList.add('show'); c.innerHTML='';
+  const at=D.after.attack;
+  const add=(txt,cls='')=>{ const d=document.createElement('div'); d.className='line '+cls; d.innerHTML=`<span class="mk">▸</span><span>${txt}</span>`; c.appendChild(d); };
+
+  add('booting the same simulated quantum computer…'); await sleep(700);
+  add(`scanning target <b>${D.after.algorithm}</b> for a factoring / discrete-log problem…`); await sleep(900);
+  add('no modulus found · security = Module-LWE (lattice)','ok'); await sleep(700);
+  add("Shor's period-finding gives no advantage here — nothing to factor",'ok'); await sleep(600);
+
+  $('v-after').classList.add('held');
+  $('a-icon').style.color='var(--green)';
+  $('a-state').innerHTML='HELD<small>the identical attack terminates with no result</small>';
+  const h=$('a-held'); h.classList.add('show');
+  h.innerHTML=`<b style="color:var(--green)">ATTACK FAILED · VAULT INTACT</b><br>${at.reason}<br><br>
+     <span style="color:var(--dim)">Legitimate holder still opens it with the real key: <b style="color:var(--green)">${D.after.opened_with_key?'yes ✓':'no'}</b></span>`;
+  btn.textContent='vault held';
+}
+
+$('b-launch').addEventListener('click',attackBefore);
+$('a-launch').addEventListener('click',attackAfter);
+boot();
+</script>
+</body>
+</html>

@@ -4,30 +4,36 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pqc-maze"
-version = "1.0.0"
-description = "A crypto-agility layer + a classical-crypto maze, to be broken by a simulated Shor's algorithm and then migrated to post-quantum crypto."
+version = "2.0.0"
+description = "A crypto-agility layer + a classical-crypto maze, broken by a simulated Shor's algorithm and then migrated to post-quantum crypto (ML-KEM) — same app, one-line swap."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "CGovS" }]
 keywords = ["post-quantum", "cryptography", "crypto-agility", "shor", "rsa", "ml-kem"]
 
-# Phase 1 has NO runtime dependencies — it is pure standard-library Python,
-# so the maze reproduces anywhere with just Python 3.11+.
+# The maze (Phase 1) has NO runtime dependencies — pure standard-library
+# Python, so it reproduces anywhere with just Python 3.11+.
 dependencies = []
 
 [project.optional-dependencies]
-# Phase 2 — the simulated Shor attacker (installed when we reach it).
-attacker = ["qiskit==1.2.4", "qiskit-aer==0.15.1"]
-# Phase 4 — the post-quantum migration (installed when we reach it).
-pqc = ["liboqs-python==0.10.0"]
-dev = ["pytest==8.3.3"]
+# Phase 2 — the simulated Shor attacker. Implemented as a from-scratch numpy
+# statevector simulation (real superposition + QFT + Born-rule measurement)
+# rather than Qiskit: Qiskit removed its built-in Shor and the Aer install is
+# heavy, whereas a numpy statevector sim is transparent and reproducible.
+attacker = ["numpy>=1.26"]
+# Phase 4 — the post-quantum migration. ML-KEM (FIPS 203) via the pure-Python
+# `kyber-py` reference implementation (no system libs to build).
+pqc = ["kyber-py>=1.0.1"]
+# Everything needed to regenerate the visual demo's data.
+demo = ["numpy>=1.26", "kyber-py>=1.0.1"]
+dev = ["pytest>=8", "numpy>=1.26", "kyber-py>=1.0.1"]
 
 [project.scripts]
 maze = "maze.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["cryptolayer*", "maze*"]
+include = ["cryptolayer*", "maze*", "attacker*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

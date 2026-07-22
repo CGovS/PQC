@@ -1,0 +1,146 @@
+window.ATTACK = {
+  "secret_plaintext": "FLAG{crypto-agility-is-the-real-migration}",
+  "before": {
+    "algorithm": "rsa-toy",
+    "label": "Classical RSA",
+    "family": "integer factoring",
+    "quantum_vulnerable": true,
+    "n": 35,
+    "e": 5,
+    "bits": 6,
+    "note": "honest ceiling for a laptop statevector sim",
+    "ciphertext": "{\"n\":35,\"len\":42,\"c\":[4,27,30,2,23,21,25,17,2,0,27,10,2,26,19,8,26,9,19,20,20,24,28,26,34,7,19,3,33,1,3,23,33,1,20,28,1,34,0,19,30,25,17,20,12,25,29,10,24,13,19,10,21,2,14,16,34,13,24,7,21,15,18,9,18,1]}",
+    "ciphertext_bytes": 203,
+    "attack": {
+      "applicable": true,
+      "success": true,
+      "algorithm": "rsa-toy",
+      "N": 35,
+      "a": 17,
+      "measured_c": 2389,
+      "M": 4096,
+      "counting_qubits": 12,
+      "work_qubits": 6,
+      "period": 12,
+      "half_exp": 29,
+      "peaks": [
+        [
+          0,
+          0.08333349227905273
+        ],
+        [
+          341,
+          0.056993265046213576
+        ],
+        [
+          342,
+          0.014248390979153966
+        ],
+        [
+          683,
+          0.05699326504621358
+        ],
+        [
+          1024,
+          0.08333349227905273
+        ],
+        [
+          1365,
+          0.056993265046213576
+        ],
+        [
+          1366,
+          0.014248390979153966
+        ],
+        [
+          1707,
+          0.05699326504621358
+        ],
+        [
+          2048,
+          0.08333349227905273
+        ],
+        [
+          2389,
+          0.056993265046213576
+        ],
+        [
+          2390,
+          0.014248390979153966
+        ],
+        [
+          2731,
+          0.05699326504621358
+        ],
+        [
+          3072,
+          0.08333349227905273
+        ],
+        [
+          3413,
+          0.056993265046213576
+        ],
+        [
+          3414,
+          0.014248390979153966
+        ],
+        [
+          3755,
+          0.05699326504621358
+        ]
+      ],
+      "factors": [
+        7,
+        5
+      ],
+      "recovered_d": 5,
+      "attempts": 1,
+      "revealed": "FLAG{crypto-agility-is-the-real-migration}",
+      "resource_estimate": {
+        "modulus_bits": 6,
+        "counting_qubits": 12,
+        "work_qubits": 6,
+        "logical_qubits_approx": 20,
+        "statevector_amplitudes": "2^18"
+      }
+    }
+  },
+  "after": {
+    "algorithm": "ml-kem-768",
+    "label": "ML-KEM-768 (FIPS 203)",
+    "family": "Module-LWE (lattice)",
+    "quantum_vulnerable": false,
+    "public_bytes": 1184,
+    "private_bytes": 2400,
+    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"OPKnsu2J1CSKw6gnZdVjggUjR9j9pCOc7UV+5Olx4XvpGlQEtISdbG7",
+    "ciphertext_bytes": 1633,
+    "attack": {
+      "applicable": false,
+      "success": false,
+      "algorithm": "ml-kem-768",
+      "reason": "No factoring target. Shor's algorithm breaks RSA/ECC by finding periods (integer factoring, discrete logs). ML-KEM's security rests on Module-LWE \u2014 a lattice problem with no known efficient quantum attack \u2014 so there is no modulus to factor and no period to find. The simulated quantum computer has nothing to do."
+    },
+    "opened_with_key": true
+  },
+  "resources": {
+    "toy": {
+      "modulus_bits": 6,
+      "counting_qubits": 12,
+      "work_qubits": 6,
+      "logical_qubits_approx": 20,
+      "statevector_amplitudes": "2^18"
+    },
+    "rsa2048": {
+      "modulus_bits": 2048,
+      "counting_qubits": 4096,
+      "work_qubits": 2048,
+      "logical_qubits_approx": 6146,
+      "statevector_amplitudes": "2^6144"
+    }
+  },
+  "migration": {
+    "application_code_changes": 0,
+    "registry_line": "register(\"ml-kem-768\", lambda: MLKEMLockBox(\"768\"))",
+    "note": "The maze app never named an algorithm; only the registry changed."
+  }
+};

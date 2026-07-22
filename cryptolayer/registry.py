@@ -1,12 +1,9 @@
 """Algorithm registry — the single place a migration happens.
 
-Today only ``rsa-toy`` is registered. When Phase 4 lands, adding
-
-    register("ml-kem-768", MLKEMLockBox)
-
-and pointing the application's config at that name is the *entire* migration
-from classical to post-quantum crypto. No application code changes. That is
-the thesis of this project, expressed in ~30 lines.
+Pointing the application's config from ``rsa-toy`` to ``ml-kem-768`` is the
+*entire* migration from classical to post-quantum crypto: no application code
+changes, just a different name resolved here. That is the thesis of this
+project, expressed in ~40 lines.
 """
 
 from __future__ import annotations
@@ -15,6 +12,7 @@ from typing import Callable
 
 from .classical import RSALockBox
 from .interface import LockBox
+from .pqc import MLKEMLockBox
 
 _REGISTRY: dict[str, Callable[[], LockBox]] = {}
 
@@ -39,6 +37,10 @@ def available() -> list[str]:
 
 
 # --- registrations -------------------------------------------------------
+# Classical (quantum-vulnerable):
 register("rsa-toy", RSALockBox)
-# Phase 4 will register the post-quantum replacement here, e.g.:
-#   register("ml-kem-768", MLKEMLockBox)
+# Post-quantum (quantum-resistant) — the migration targets. Selecting one of
+# these names instead of "rsa-toy" is the whole migration:
+register("ml-kem-512", lambda: MLKEMLockBox("512"))
+register("ml-kem-768", lambda: MLKEMLockBox("768"))
+register("ml-kem-1024", lambda: MLKEMLockBox("1024"))

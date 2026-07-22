@@ -166,7 +166,7 @@
 
     <!-- AFTER -->
     <div class="vault after" id="v-after">
-      <div class="vhead"><h2>After · ML-KEM-768</h2><span class="badge" id="a-badge">QUANTUM-RESISTANT</span></div>
+      <div class="vhead"><h2 id="a-title">After · ML-KEM-768</h2><span class="badge" id="a-badge">QUANTUM-RESISTANT</span></div>
       <div class="sub" id="a-sub">Module-LWE lattice · FIPS 203</div>
       <div class="facts" id="a-facts"></div>
       <div class="blob" id="a-blob"></div>
@@ -220,6 +220,10 @@ function boot(){
     `<b>${b.bits}</b>-bit key`, `${b.note}`
   ].map(t=>`<span class="fact">${t}</span>`).join('');
   $('b-blob').textContent = b.ciphertext;
+
+  // AFTER header/sub — data-bound so they never go stale on a level swap
+  $('a-title').textContent = 'After · ' + a.algorithm.toUpperCase();
+  if(a.family) $('a-sub').textContent = a.family + ' · FIPS 203';
 
   // AFTER facts
   $('a-facts').innerHTML = [
@@ -296,10 +300,11 @@ async function attackAfter(){
   const at=D.after.attack;
   const add=(txt,cls='')=>{ const d=document.createElement('div'); d.className='line '+cls; d.innerHTML=`<span class="mk">▸</span><span>${txt}</span>`; c.appendChild(d); };
 
-  add('booting the same simulated quantum computer…'); await sleep(700);
-  add(`scanning target <b>${D.after.algorithm}</b> for a factoring / discrete-log problem…`); await sleep(900);
-  add('no modulus found · security = Module-LWE (lattice)','ok'); await sleep(700);
-  add("Shor's period-finding gives no advantage here — nothing to factor",'ok'); await sleep(600);
+  const probe = at.probe || {};
+  add('booting the same simulated quantum computer — factoring routine online'); await sleep(700);
+  add(`probing the public key of <b>${D.after.algorithm}</b> for an integer modulus to factor…`); await sleep(900);
+  add(`public key is a ${probe.public_key_type||'lattice key'}${probe.public_key_bytes?' ('+fmtBytes(probe.public_key_bytes)+')':''} · integer modulus found: <b>${probe.integer_modulus_found?'yes':'no'}</b>`, probe.integer_modulus_found?'hot':'ok'); await sleep(800);
+  add("no factoring target → Shor's period-finding has no input; the attack halts before it starts",'ok'); await sleep(600);
 
   $('v-after').classList.add('held');
   $('a-icon').style.color='var(--green)';

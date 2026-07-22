@@ -82,7 +82,7 @@ def build_report(level: str = "ceiling", seed: int = 1,
         },
         "migration": {
             "application_code_changes": 0,
-            "registry_line": f'register("{pqc_algo}", lambda: MLKEMLockBox("{pqc_level}"))',
+            "registry_line": f'register("{pqc_algo}", _mlkem_factory("{pqc_level}"))',
             "note": "The maze app never named an algorithm; only the registry changed.",
         },
     }

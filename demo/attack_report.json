@@ -112,13 +112,18 @@
     "quantum_vulnerable": false,
     "public_bytes": 1184,
     "private_bytes": 2400,
-    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"OPKnsu2J1CSKw6gnZdVjggUjR9j9pCOc7UV+5Olx4XvpGlQEtISdbG7",
+    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"1Vo7JZU+mWn/ycYrra5TNTWOGrbb1+iN7mw1lNKseigFM/za4qkFCkG",
     "ciphertext_bytes": 1633,
     "attack": {
       "applicable": false,
       "success": false,
       "algorithm": "ml-kem-768",
-      "reason": "No factoring target. Shor's algorithm breaks RSA/ECC by finding periods (integer factoring, discrete logs). ML-KEM's security rests on Module-LWE \u2014 a lattice problem with no known efficient quantum attack \u2014 so there is no modulus to factor and no period to find. The simulated quantum computer has nothing to do."
+      "probe": {
+        "public_key_type": "MLKEMPublicKey",
+        "integer_modulus_found": false,
+        "public_key_bytes": 1184
+      },
+      "reason": "No factoring target. The attacker inspected the public key for an integer modulus and found none \u2014 this is a lattice public key, not an integer. Shor's algorithm breaks RSA/ECC by period-finding (integer factoring / discrete logs); ML-KEM's security rests on Module-LWE, which does not reduce to period-finding, so there is nothing to feed the quantum computer. Note this outcome comes from probing the key, not from trusting a safety label."
     },
     "opened_with_key": true
   },
@@ -140,7 +145,7 @@
   },
   "migration": {
     "application_code_changes": 0,
-    "registry_line": "register(\"ml-kem-768\", lambda: MLKEMLockBox(\"768\"))",
+    "registry_line": "register(\"ml-kem-768\", _mlkem_factory(\"768\"))",
     "note": "The maze app never named an algorithm; only the registry changed."
   }
 }

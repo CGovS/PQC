@@ -41,8 +41,10 @@ ML-KEM holding against the identical attack on the right.
 > superposition → quantum Fourier transform → Born-rule measurement →
 > continued-fraction period extraction). Reason: Qiskit removed its built-in
 > `Shor`, and Aer is a heavy, volatile dependency; a numpy statevector sim is
-> transparent, reproducible, and honest about its `2^(2n)`-amplitude ceiling.
-> A Qiskit circuit view can be added later without changing the result.
+> transparent, reproducible, and honest about its resource ceiling (the full
+> Shor state is `2^(3n)` amplitudes for an n-bit modulus; the sim holds only a
+> `2^(2n)` counting column at a time). A Qiskit circuit view can be added later
+> without changing the result.
 
 ## Repository layout
 
@@ -88,11 +90,11 @@ post-quantum layer needs `kyber-py` (both installed by `make setup`).
   {15, 21, 35}) so that a *classical simulation* of Shor's algorithm can
   actually factor them. Never use `cryptolayer/classical.py` for anything real.
 - **A simulated quantum computer cannot break real RSA.** A statevector
-  simulator holds `2^n` amplitudes, so it caps out around a few dozen qubits —
-  enough for these toy moduli (the maze factorization runs in a `2^18`-amplitude
-  state), nowhere near RSA-2048 (`2^6144`). The attacker factors the toy moduli
-  honestly *and* ships a resource estimate; that estimate — not the tiny live
-  break — is what generalizes.
+  simulator holds `2^q` amplitudes for `q` qubits, so it caps out around a few
+  dozen qubits — enough for these toy moduli (the maze factorization's full
+  state is `2^18` amplitudes, `q=18`), nowhere near RSA-2048 (`q=6144`, i.e.
+  `2^6144`). The attacker factors the toy moduli honestly *and* ships a resource
+  estimate; that estimate — not the tiny live break — is what generalizes.
 - **The post-quantum side is real, the DEM is not the point.** ML-KEM is the
   genuine FIPS 203 primitive (via `kyber-py`). Because a KEM only transports a
   shared secret, the payload is sealed with a stdlib encrypt-then-MAC DEM

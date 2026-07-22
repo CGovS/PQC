@@ -2,8 +2,10 @@
 
 Against classical RSA it factors the modulus and opens the vault. Against
 ML-KEM it has nothing to factor: lattice security (Module-LWE) does not reduce
-to period-finding, so Shor gives no advantage. This module encodes that
-honestly and returns a structured outcome the demo renders as before/after.
+to period-finding, so Shor gives no advantage. Crucially, the attacker decides
+applicability by *probing the public key* for an integer modulus — not by
+reading any 'is this safe?' flag on the algorithm — so the ML-KEM outcome is a
+discovered fact. The module returns a structured before/after for the demo.
 """
 
 from __future__ import annotations
@@ -18,6 +20,21 @@ from .break_maze import crack_vault
 from .shor import resource_estimate
 
 
+def _factoring_target(public: Any) -> int | None:
+    """What Shor's routine needs to run: an integer modulus exposed by the
+    public key. RSA public keys carry ``n``; a lattice (ML-KEM) public key
+    carries no integer to factor, so this returns ``None`` for them.
+
+    The attack's applicability is decided by *probing the public key* here —
+    not by trusting any 'is this safe?' label on the algorithm. That is what
+    makes the ML-KEM 'nothing to break' outcome a discovered fact rather than
+    an assertion: flip ML-KEM's quantum_vulnerable flag to True and this probe
+    still finds no modulus.
+    """
+    n = getattr(public, "n", None)
+    return n if isinstance(n, int) else None
+
+
 def run_quantum_attack(vault: Vault, public: Any, *, seed: int = 1,
                        force_quantum: bool = True) -> dict:
     """Attempt to open ``vault`` with a simulated quantum computer.
@@ -26,22 +43,34 @@ def run_quantum_attack(vault: Vault, public: Any, *, seed: int = 1,
     it succeeded, and (for RSA) the quantum-period-finding trace for display.
     """
     box = get_lockbox(vault.algorithm)
+    modulus = _factoring_target(public)
 
-    if not box.quantum_vulnerable:
+    if modulus is None:
+        # The attacker booted Shor and inspected the public key for an integer
+        # modulus to factor. It found none — this target's public key is a
+        # lattice object, not an integer. Period-finding has no input, so the
+        # attack halts before it can start. Discovered, not declared.
         return {
             "applicable": False,
             "success": False,
             "algorithm": vault.algorithm,
+            "probe": {
+                "public_key_type": type(public).__name__,
+                "integer_modulus_found": False,
+                "public_key_bytes": len(getattr(public, "ek", b"")) or None,
+            },
             "reason": (
-                "No factoring target. Shor's algorithm breaks RSA/ECC by finding "
-                "periods (integer factoring, discrete logs). ML-KEM's security "
-                "rests on Module-LWE — a lattice problem with no known efficient "
-                "quantum attack — so there is no modulus to factor and no period "
-                "to find. The simulated quantum computer has nothing to do."
+                "No factoring target. The attacker inspected the public key for "
+                "an integer modulus and found none — this is a lattice public "
+                "key, not an integer. Shor's algorithm breaks RSA/ECC by period-"
+                "finding (integer factoring / discrete logs); ML-KEM's security "
+                "rests on Module-LWE, which does not reduce to period-finding, so "
+                "there is nothing to feed the quantum computer. Note this outcome "
+                "comes from probing the key, not from trusting a safety label."
             ),
         }
 
-    # Quantum-vulnerable target with an RSA modulus: run the real attack.
+    # Public key exposes a modulus n: run the real quantum factoring attack.
     secret, priv, result = crack_vault(vault, public, seed=seed, force_quantum=force_quantum)
     win = result.attempts[-1]
     a, N = win["a"], public.n

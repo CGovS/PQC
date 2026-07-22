@@ -6,9 +6,14 @@ apply an inverse quantum Fourier transform (via the DFT), and measure under
 the Born rule. Classical continued fractions turn the measured value into the
 period ``r``, and ``gcd(a^(r/2) ± 1, N)`` yields the factors.
 
-Honest limit: the statevector has ``2^(2n)`` amplitudes for an n-bit modulus,
-so this simulation is fine for n up to ~a few dozen bits and cannot touch real
-RSA. ``resource_estimate`` spells out the gap.
+Honest limit: Shor's full statevector has ``2^(3n)`` amplitudes for an n-bit
+modulus — a ``2n``-qubit counting register tensored with an ``n``-qubit work
+register (``resource_estimate`` reports this). This simulator exploits the
+period structure to hold only a ``2^(2n)``-sized counting column per distinct
+work value, but even that counting register is built with a Python loop over
+``M = 2^(2n)`` states, so the practical laptop ceiling is ~13-15 bits — enough
+for the toy moduli, nowhere near real RSA. ``resource_estimate`` spells out the
+gap.
 """
 
 from __future__ import annotations
@@ -65,8 +70,12 @@ def quantum_period_finding(a: int, N: int, *, rng: random.Random) -> PeriodFindi
     prob = prob / prob.sum()
     measured_c = int(rng.choices(range(M), weights=prob.tolist(), k=1)[0])
 
-    order = np.argsort(prob)[::-1][:16]
-    peaks = sorted((int(c), float(prob[c])) for c in order)
+    # Top peaks for visualization, plus the actually-measured value so the
+    # demo can always highlight it — Born sampling draws from the full
+    # distribution, so measured_c need not be among the top 16.
+    top = set(int(c) for c in np.argsort(prob)[::-1][:16])
+    top.add(measured_c)
+    peaks = sorted((c, float(prob[c])) for c in top)
 
     period = _period_from_measurement(measured_c, M, a, N)
     return PeriodFinding(a=a, N=N, t=t, n=n, M=M, measured_c=measured_c,

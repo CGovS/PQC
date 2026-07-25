@@ -112,7 +112,7 @@
     "quantum_vulnerable": false,
     "public_bytes": 1184,
     "private_bytes": 2400,
-    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"1Vo7JZU+mWn/ycYrra5TNTWOGrbb1+iN7mw1lNKseigFM/za4qkFCkG",
+    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"BSHB2ejI+mN+91btmAPeS9+DbXVeMV0THnWR/8RQJl8fLUSIWF+HRdX",
     "ciphertext_bytes": 1633,
     "attack": {
       "applicable": false,

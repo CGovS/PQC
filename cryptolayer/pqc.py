@@ -89,7 +89,10 @@ class MLKEMLockBox(LockBox):
 
         nonce = hashlib.sha256(kem_ct).digest()[:16]  # unique per encapsulation
         body = bytes(a ^ b for a, b in zip(plaintext, _keystream(enc_key, nonce, len(plaintext))))
-        tag = hmac.new(mac_key, kem_ct + nonce + body, hashlib.sha256).digest()
+        # Bind the level (associated data) into the MAC so a tampered level
+        # fails authentication rather than an incidental parse/size error.
+        aad = public.level.encode()
+        tag = hmac.new(mac_key, aad + b"|" + kem_ct + nonce + body, hashlib.sha256).digest()
 
         payload = {
             "level": public.level,
@@ -112,7 +115,8 @@ class MLKEMLockBox(LockBox):
         enc_key = _kdf(shared_secret, b"pqc-dem-enc")
         mac_key = _kdf(shared_secret, b"pqc-dem-mac")
 
-        expected = hmac.new(mac_key, kem_ct + nonce + body, hashlib.sha256).digest()
+        aad = payload["level"].encode()
+        expected = hmac.new(mac_key, aad + b"|" + kem_ct + nonce + body, hashlib.sha256).digest()
         if not hmac.compare_digest(expected, tag):
             raise ValueError("authentication failed — wrong key or tampered ciphertext")
 

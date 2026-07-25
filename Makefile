@@ -1,6 +1,6 @@
 # PQC — reproducible entry points. The maze needs only Python 3.11+;
 # the attacker and PQC layer need `make setup` (numpy + kyber-py).
-.PHONY: help setup test demo demo-ladder report web clean
+.PHONY: help setup test verify demo demo-ladder report web clean
 
 PY ?= python3
 PORT ?= 8765
@@ -8,6 +8,7 @@ PORT ?= 8765
 help:
 	@echo "make setup        install deps (pytest + numpy + kyber-py), editable"
 	@echo "make test         run the full test suite"
+	@echo "make verify       prove the break + defense are real (end-to-end + JS/Python parity)"
 	@echo "make demo         seal + open a vault at the warmup level (stdlib only)"
 	@echo "make demo-ladder  run the CLI demo across every RSA level"
 	@echo "make report       regenerate the before/after attack data for the web demo"
@@ -18,6 +19,9 @@ setup:
 
 test:
 	$(PY) -m pytest -q
+
+verify: report
+	$(PY) -m attacker.verify
 
 demo:
 	$(PY) -m maze.cli demo --level warmup

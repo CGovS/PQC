@@ -42,14 +42,18 @@ class PeriodFinding:
     peaks: list[tuple[int, float]]  # top (c, probability) for visualization
 
 
-def quantum_period_finding(a: int, N: int, *, rng: random.Random) -> PeriodFinding:
-    """Simulate the quantum period-finding subroutine of Shor's algorithm."""
+def measurement_distribution(a: int, N: int) -> np.ndarray:
+    """The Born-rule probability distribution over measured counting values.
+
+    Builds |psi> = (1/sqrt(M)) sum_x |x> |a^x mod N>, QFTs the counting
+    register, and returns |amplitude|^2 per outcome. Exposed so the browser's
+    JavaScript engine can be cross-checked against this numpy statevector one
+    element-by-element — verifying the quantum machinery, not just the factors.
+    """
     n = n_qubits_for(N)
     t = 2 * n                     # standard choice: 2n counting qubits
     M = 1 << t
 
-    # Entangled state after the modular-exponentiation oracle:
-    #   |psi> = (1/sqrt(M)) * sum_x |x> |a^x mod N>
     # f(x) = a^x mod N cycles with period r, so only r distinct work values
     # appear. We group amplitude by work value and QFT each group's x-column.
     fx = np.empty(M, dtype=np.int64)
@@ -67,7 +71,15 @@ def quantum_period_finding(a: int, N: int, *, rng: random.Random) -> PeriodFindi
         transformed = np.fft.fft(col) / math.sqrt(M)
         prob += np.abs(transformed) ** 2
 
-    prob = prob / prob.sum()
+    return prob / prob.sum()
+
+
+def quantum_period_finding(a: int, N: int, *, rng: random.Random) -> PeriodFinding:
+    """Simulate the quantum period-finding subroutine of Shor's algorithm."""
+    n = n_qubits_for(N)
+    t = 2 * n
+    M = 1 << t
+    prob = measurement_distribution(a, N)
     measured_c = int(rng.choices(range(M), weights=prob.tolist(), k=1)[0])
 
     # Top peaks for visualization, plus the actually-measured value so the

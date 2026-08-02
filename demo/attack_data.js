@@ -1,5 +1,5 @@
 window.ATTACK = {
-  "secret_plaintext": "FLAG{crypto-agility-is-the-real-migration}",
+  "secret_plaintext": "FLAG{h4rv35t_n0w_d3crypt_l4t3r}",
   "before": {
     "algorithm": "rsa-toy",
     "label": "Classical RSA",
@@ -9,8 +9,8 @@ window.ATTACK = {
     "e": 5,
     "bits": 6,
     "note": "honest ceiling for a laptop statevector sim",
-    "ciphertext": "{\"n\":35,\"len\":42,\"c\":[4,27,30,2,23,21,25,17,2,0,27,10,2,26,19,8,26,9,19,20,20,24,28,26,34,7,19,3,33,1,3,23,33,1,20,28,1,34,0,19,30,25,17,20,12,25,29,10,24,13,19,10,21,2,14,16,34,13,24,7,21,15,18,9,18,1]}",
-    "ciphertext_bytes": 203,
+    "ciphertext": "{\"n\":35,\"len\":31,\"c\":[14,13,25,24,17,24,30,10,27,18,13,1,3,3,34,14,28,31,13,30,11,10,4,25,20,32,4,32,30,22,20,2,18,28,14,9,15,8,14,15,26,11,32,5,13,29,16,3]}",
+    "ciphertext_bytes": 157,
     "attack": {
       "applicable": true,
       "success": true,
@@ -95,7 +95,7 @@ window.ATTACK = {
       ],
       "recovered_d": 5,
       "attempts": 1,
-      "revealed": "FLAG{crypto-agility-is-the-real-migration}",
+      "revealed": "FLAG{h4rv35t_n0w_d3crypt_l4t3r}",
       "resource_estimate": {
         "modulus_bits": 6,
         "counting_qubits": 12,
@@ -112,8 +112,8 @@ window.ATTACK = {
     "quantum_vulnerable": false,
     "public_bytes": 1184,
     "private_bytes": 2400,
-    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"BSHB2ejI+mN+91btmAPeS9+DbXVeMV0THnWR/8RQJl8fLUSIWF+HRdX",
-    "ciphertext_bytes": 1633,
+    "ciphertext_preview": "{\"level\":\"768\",\"kem_ct\":\"J8Vl7r9G2Y/OXJJUVVQjEakjuzsVIXEs4knPXhZCNQFMtx3dckjG5qz",
+    "ciphertext_bytes": 1621,
     "attack": {
       "applicable": false,
       "success": false,

@@ -5,7 +5,7 @@ import pytest
 from maze.keys import LEVEL_INFO, make_keypair
 from maze.vault import open_vault, seal
 
-SECRET = b"FLAG{crypto-agility-is-the-real-migration}"
+SECRET = b"FLAG{h4rv35t_n0w_d3crypt_l4t3r}"
 
 
 @pytest.mark.parametrize("level", list(LEVEL_INFO))

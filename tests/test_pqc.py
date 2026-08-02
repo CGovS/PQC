@@ -8,7 +8,7 @@ from cryptolayer.registry import available, get_lockbox
 from maze.keys import make_keypair
 from maze.vault import open_vault, seal
 
-SECRET = b"FLAG{crypto-agility-is-the-real-migration}"
+SECRET = b"FLAG{h4rv35t_n0w_d3crypt_l4t3r}"
 
 
 @pytest.mark.parametrize("algo", ["ml-kem-512", "ml-kem-768", "ml-kem-1024"])

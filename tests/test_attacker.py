@@ -9,7 +9,7 @@ from attacker.break_maze import crack_vault
 from maze.keys import LEVEL_INFO, make_keypair
 from maze.vault import seal
 
-SECRET = b"FLAG{crypto-agility-is-the-real-migration}"
+SECRET = b"FLAG{h4rv35t_n0w_d3crypt_l4t3r}"
 
 
 @pytest.mark.parametrize("N,expected", [(15, {3, 5}), (21, {3, 7}), (35, {5, 7})])

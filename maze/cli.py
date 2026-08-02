@@ -15,7 +15,7 @@ from typing import Sequence
 from maze.keys import DEFAULT_LEVEL, LEVEL_INFO, make_keypair
 from maze.vault import open_vault, seal
 
-DEFAULT_SECRET = b"FLAG{crypto-agility-is-the-real-migration}"
+DEFAULT_SECRET = b"FLAG{h4rv35t_n0w_d3crypt_l4t3r}"
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

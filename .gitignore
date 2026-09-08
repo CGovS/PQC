@@ -21,3 +21,7 @@ htmlcov/
 *.swp
 .idea/
 .vscode/
+
+# Local version backups and browser outputs
+backups/
+artifacts/

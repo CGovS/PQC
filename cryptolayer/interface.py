@@ -1,10 +1,7 @@
-"""The crypto-agility interface.
+"""Shared educational vault interface; backends still need compatible keys.
 
-Every algorithm — classical or post-quantum — implements ``LockBox``. The
-application never imports a concrete algorithm; it asks the registry for one
-by name. This is the abstraction real enterprises lack, and it is what makes
-a classical -> post-quantum migration a configuration change rather than a
-code change.
+The interface keeps application calls stable. It does not implement protocol
+negotiation, signature migration, hybrid combinations, or production key management.
 """
 
 from __future__ import annotations

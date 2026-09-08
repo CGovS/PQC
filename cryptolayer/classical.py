@@ -1,6 +1,6 @@
 """Classical RSA LockBox — DELIBERATELY WEAK, for demonstration only.
 
-The moduli here are tiny (n in {15, 21, 35}) so that a *classical simulation*
+The moduli here are tiny (n in {15, 21, 33}) so that a *classical simulation*
 of Shor's algorithm can actually factor them on a laptop. This is textbook
 "toy RSA": it is broken by design. Never use it to protect anything real.
 
@@ -22,7 +22,7 @@ from .interface import KeyPair, LockBox
 DEFAULT_LADDER: dict[str, tuple[int, int]] = {
     "warmup": (3, 5),   # n = 15  — the canonical Shor teaching example
     "easy": (3, 7),     # n = 21  — the classic "factor 21" simulation target
-    "ceiling": (5, 7),  # n = 35  — an honest ceiling for laptop statevector sims
+    "ceiling": (3, 11), # n = 33, e = 3, d = 7: public exponent cannot decrypt
 }
 
 
@@ -128,8 +128,11 @@ class RSALockBox(LockBox):
     def unlock(self, private: RSAPrivateKey, ciphertext: bytes) -> bytes:
         payload = json.loads(ciphertext.decode("utf-8"))
         n, d = private.n, private.d
-        digits = [pow(c, d, n) for c in payload["c"]]
-        length = payload["len"]
-        if length == 0:
-            return b""
+        length = payload.get("len")
+        cipher = payload.get("c")
+        if (payload.get("n") != n or type(length) is not int or not 0 <= length <= 4096
+                or not isinstance(cipher, list) or not cipher or len(cipher) > 32768
+                or any(type(c) is not int or not 0 <= c < n for c in cipher)):
+            raise ValueError("invalid toy RSA ciphertext")
+        digits = [pow(c, d, n) for c in cipher]
         return _from_base(digits, n).to_bytes(length, "big")

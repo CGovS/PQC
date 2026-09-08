@@ -29,8 +29,7 @@ const fail = (m) => { console.error("     FAIL: " + m); fails++; };
 const pass = (m) => console.log("     ok: " + m);
 
 // 1. QFT distribution parity — the real anti-tautology check.
-{
-  const { a, N, prob } = ch.dist;
+for (const { a, N, prob } of ch.distributions) {
   const js = QC.distribution(a, N);
   if (js.length !== prob.length) {
     fail(`distribution length ${js.length} != python ${prob.length}`);
@@ -42,6 +41,18 @@ const pass = (m) => console.log("     ok: " + m);
   }
 }
 
+// Controlled draws check inverse-CDF sampling itself, independent of fresh randomness.
+for (const {a,N,prob} of ch.distributions) {
+  for (const u of [.13,.37,.61,.89]) {
+    let sum=0, expected=prob.length-1;
+    for(let c=0;c<prob.length;c++){sum+=prob[c];if(u<sum){expected=c;break;}}
+    const pf=QC.quantumPeriodFinding(a,N,()=>u);
+    if(pf.measuredC!==expected)fail(`Born sampler mismatch at u=${u}, N=${N}`);
+  }
+}
+// An analytic case independent of either implementation: order 4 for 2 mod 15.
+const analytic=QC.distribution(2,15);
+for(let c=0;c<analytic.length;c++)if(Math.abs(analytic[c]-(c%64===0?.25:0))>1e-12)fail('analytic order-4 distribution mismatch');
 // 2. Byte-exact decryption vs a fresh Python break (covers binary / multibyte).
 for (const v of ch.vectors) {
   const res = QC.crackRSA({ n: v.n, e: v.e }, v.ciphertext); // full break, not a handed key
@@ -56,12 +67,16 @@ for (const v of ch.vectors) {
   let bytesOK = 0;
   for (let i = 0; i < runs; i++) {
     const res = QC.crackRSA({ n, e }, ciphertext);
+    const pf=res.shor.pf;
+    if (!pf || pf.period!==QC.periodFromMeasurement(pf.measuredC,pf.M,pf.a,n)
+        || pf.period%2!==0 || QC.powmodInt(pf.a,pf.period,n)!==1)
+      fail('successful break lacks a consistent quantum period trace');
     seen.add(res.shor.pf.measuredC);
     if (res.bytesHex === plaintext_hex) bytesOK++;
   }
   if (bytesOK === runs) pass(`${runs}/${runs} independent live breaks recovered the exact bytes`);
   else fail(`${runs - bytesOK}/${runs} live breaks recovered wrong bytes`);
-  if (seen.size >= 2) pass(`${seen.size} distinct Born-rule measurements across ${runs} runs (live sampling, not replay)`);
+  if (seen.size >= 2) pass(`${seen.size} distinct Born-rule measurements across ${runs} runs (observed variation; alone not proof of quantum computation)`);
   else fail(`only ${seen.size} distinct measurement across ${runs} runs — sampling is not live`);
 }
 

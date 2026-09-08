@@ -84,6 +84,7 @@
   // verification harness can compare this engine to Python's numpy statevector
   // element-by-element — i.e. verify the QUANTUM machinery, not just the factors.
   function _distribution(a, N) {
+    if (!Number.isInteger(N) || N < 3 || N > 127 || !Number.isInteger(a) || a <= 1 || a >= N || gcdInt(a,N) !== 1) throw new RangeError("simulation requires a coprime base and 3 <= N <= 127");
     const n = bitLen(N), t = 2 * n, M = 1 << t;
     const fx = new Int32Array(M);
     let val = 1;
@@ -124,6 +125,7 @@
 
   // ---- Shor's algorithm ----------------------------------------------------
   function shorFactor(N, opts) {
+    if (!Number.isInteger(N) || N < 3 || N > 127) throw new RangeError("educational simulator supports 3 <= N <= 127");
     opts = opts || {};
     const rng = opts.rng || Math.random;
     const forceQuantum = opts.forceQuantum !== false; // default: exercise the quantum path
@@ -176,6 +178,7 @@
   // integer does not fit in payload.len bytes, mirroring Python's to_bytes
   // OverflowError instead of silently truncating a malformed/adversarial payload.
   function rsaDecryptBytes(payload, d, n) {
+    if (payload.n !== n || !Number.isInteger(payload.len) || payload.len < 0 || payload.len > 4096 || !Array.isArray(payload.c) || !payload.c.length || payload.c.length > 32768 || payload.c.some(c => !Number.isInteger(c) || c < 0 || c >= n)) throw new RangeError("invalid toy RSA ciphertext");
     const N = BigInt(n), D = typeof d === "bigint" ? d : BigInt(d), base = BigInt(n);
     const digits = payload.c.map((c) => powmodBig(BigInt(c), D, N)); // c^d mod n
     let val = 0n, p = 1n;

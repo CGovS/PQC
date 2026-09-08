@@ -1,299 +1,45 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PQC · Break RSA with a quantum computer, live</title>
-<script src="attack_data.js"></script>
-<script src="quantum.js"></script>
-<style>
-  :root{
-    --bg:#05070d; --card:#0c1320; --card2:#0f1a2b; --ink:#eaf1fb; --dim:#8ca2c0; --faint:#5a6f90;
-    --cyan:#28d7f0; --violet:#a78bfa; --red:#fb5570; --green:#37e0a0;
-    --line:rgba(120,160,220,.13);
-    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{
-    font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased;
-    background-image:radial-gradient(900px 500px at 20% -10%,rgba(40,215,240,.10),transparent 60%),
-      radial-gradient(800px 500px at 100% 0%,rgba(167,139,250,.08),transparent 55%);
-  }
-  .wrap{max-width:820px;margin:0 auto;padding:0 20px 80px}
-
-  header{display:flex;align-items:center;gap:10px;padding:22px 0 8px}
-  .logo{font-family:var(--mono);font-weight:700;letter-spacing:.5px}
-  .logo b{color:var(--cyan)}
-  header .sp{flex:1}
-  header a{font-family:var(--mono);font-size:12px;color:var(--faint);text-decoration:none}
-  header a:hover{color:var(--cyan)}
-
-  .hero{text-align:center;padding:40px 0 26px}
-  .hero h1{font-size:clamp(30px,5.4vw,50px);line-height:1.04;letter-spacing:-.8px;margin:0 0 14px}
-  .hero h1 .g{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{color:var(--dim);max-width:540px;margin:0 auto;font-size:16px}
-
-  /* toggle */
-  .seg{display:flex;gap:6px;background:#0a111d;border:1px solid var(--line);border-radius:999px;padding:5px;width:max-content;margin:0 auto 20px}
-  .seg button{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--dim);background:none;border:0;padding:9px 18px;border-radius:999px;cursor:pointer;transition:.2s;white-space:nowrap}
-  .seg button .st{opacity:.7;font-weight:400}
-  .seg button.on[data-k=rsa]{background:rgba(251,85,112,.16);color:var(--red)}
-  .seg button.on[data-k=pqc]{background:rgba(55,224,160,.15);color:var(--green)}
-
-  /* stage */
-  .stage{position:relative;border-radius:20px;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);padding:24px;overflow:hidden;transition:box-shadow .5s,border-color .5s}
-  .stage.rsa{--ac:var(--red)} .stage.pqc{--ac:var(--green)}
-  .stage.cracked{border-color:var(--red);box-shadow:0 0 0 1px rgba(251,85,112,.35),0 30px 80px -40px rgba(251,85,112,.7)}
-  .stage.held{border-color:var(--green);box-shadow:0 0 0 1px rgba(55,224,160,.3),0 30px 80px -40px rgba(55,224,160,.6)}
-
-  .srow{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-  .lock{width:46px;height:46px;flex:none;display:grid;place-items:center;border-radius:12px;background:rgba(120,160,220,.08);border:1px solid var(--line);color:var(--ac);transition:.45s}
-  .lock svg{width:24px;height:24px}
-  .stage.cracked .lock{color:var(--red);transform:rotate(-8deg)} .stage.held .lock{color:var(--green)}
-  .meta h2{font-size:16px;margin:0}
-  .meta .tag{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
-  .state{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
-  .stage.cracked .state{color:var(--red);border-color:rgba(251,85,112,.4);background:rgba(251,85,112,.08)}
-  .stage.held .state{color:var(--green);border-color:rgba(55,224,160,.35);background:rgba(55,224,160,.08)}
-
-  /* the spectrum — the hero visual */
-  .scope{position:relative;height:196px;border-radius:14px;background:radial-gradient(120% 120% at 50% 120%,#0a1524,#060b14);border:1px solid var(--line);overflow:hidden}
-  .scope .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(120,160,220,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,220,.06) 1px,transparent 1px);background-size:100% 33px,7% 100%;opacity:.6}
-  .scope svg{position:absolute;inset:0;width:100%;height:100%}
-  .scope .cap{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--faint);pointer-events:none}
-  .scope .cap b{color:var(--cyan)} .scope .cap .m{color:var(--red)}
-  #wipe{transition:width 1.15s cubic-bezier(.25,.8,.25,1)}
-  #measure{opacity:0;transition:opacity .4s}
-  #measure.show{opacity:1}
-  .mdot{r:5;fill:var(--red);filter:drop-shadow(0 0 6px var(--red))}
-
-  .status{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin:16px 2px 4px;min-height:18px;display:flex;gap:8px;align-items:baseline}
-  .status .mk{color:var(--cyan)} .status.hot .mk{color:var(--red)} .status.ok .mk{color:var(--green)}
-  .readout{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin:2px 2px 0;min-height:15px}
-  .readout b{color:var(--ink)}
-
-  .flag{margin-top:14px;font-family:var(--mono);font-size:clamp(14px,3.4vw,19px);font-weight:600;letter-spacing:.5px;
-    padding:14px 16px;border-radius:12px;display:none;word-break:break-all}
-  .flag.show{display:block}
-  .flag.crack{color:#ffd7de;background:rgba(251,85,112,.09);border:1px solid rgba(251,85,112,.4)}
-  .flag.safe{color:var(--green);background:rgba(55,224,160,.07);border:1px solid rgba(55,224,160,.35);font-size:14px;font-weight:400}
-  .flag .k{display:block;font-size:10.5px;font-weight:400;letter-spacing:.4px;color:var(--dim);margin-bottom:6px}
-
-  button.go{margin-top:18px;width:100%;font-family:var(--mono);font-size:13.5px;font-weight:700;letter-spacing:.3px;color:#04121a;
-    background:linear-gradient(90deg,var(--cyan),#7defff);border:0;padding:14px;border-radius:12px;cursor:pointer;transition:.2s;box-shadow:0 10px 30px -14px rgba(40,215,240,.9)}
-  button.go:hover{transform:translateY(-1px)} button.go:disabled{opacity:.55;cursor:progress;transform:none}
-  button.go.again{background:#26324a;color:var(--ink);box-shadow:none}
-
-  .takeaway{margin-top:26px;text-align:center;font-size:14.5px;color:var(--dim)}
-  .takeaway code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:#0a111d;border:1px solid var(--line);border-radius:7px;padding:3px 8px}
-  .takeaway b{color:var(--ink)}
-
-  details.more{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
-  details.more summary{font-family:var(--mono);font-size:12px;color:var(--faint);cursor:pointer;list-style:none}
-  details.more summary::-webkit-details-marker{display:none}
-  details.more summary::before{content:"▸ ";color:var(--cyan)}
-  details.more[open] summary::before{content:"▾ "}
-  details.more .body{font-size:12.5px;color:var(--faint);line-height:1.7;margin-top:12px}
-  details.more .body b{color:var(--dim)} details.more .body code{font-family:var(--mono);color:var(--cyan)}
-  details.more a{color:var(--cyan);text-decoration:none}
-</style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="An interactive lab: encrypt two vaults, simulate Shor's attack on toy RSA, and see what changes with post-quantum cryptography.">
+<title>PQC Lab — Same secret. Different ending.</title>
+<link rel="stylesheet" href="style.css"><script src="quantum.js" defer></script><script src="app.js" defer></script>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <span class="logo"><b>PQC</b> · crypto-agility</span>
-    <span class="sp"></span>
-    <a id="ghlink" href="https://github.com/CGovS/PQC" target="_blank">source ↗</a>
-  </header>
-
-  <div class="hero">
-    <h1>Break RSA with a<br><span class="g">quantum computer.</span> Live.</h1>
-    <p>A vault is sealed with classical RSA. Press the button — a simulated quantum computer
-       cracks it right here in your browser. Then flip one line to post-quantum, and the same attack dies.</p>
-  </div>
-
-  <div class="seg">
-    <button data-k="rsa" class="on">RSA <span class="st">· vulnerable</span></button>
-    <button data-k="pqc">ML-KEM <span class="st">· quantum-safe</span></button>
-  </div>
-
-  <div class="stage rsa" id="stage">
-    <div class="srow">
-      <div class="lock" id="lock">$LOCK$</div>
-      <div class="meta"><h2 id="algo">Vault · RSA-35</h2><div class="tag" id="tag">classical · factoring problem</div></div>
-      <div class="state" id="state">SEALED</div>
-    </div>
-    <div class="scope" id="scope">
-      <div class="grid"></div>
-      <svg viewBox="0 0 1000 200" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#28d7f0" stop-opacity=".85"/>
-            <stop offset="1" stop-color="#28d7f0" stop-opacity="0"/>
-          </linearGradient>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4"/></filter>
-          <clipPath id="clip"><rect id="wipe" x="0" y="0" width="0" height="200"/></clipPath>
-        </defs>
-        <g clip-path="url(#clip)">
-          <path id="area" d="" fill="url(#grad)"/>
-          <path id="line" d="" fill="none" stroke="#7defff" stroke-width="2" filter="url(#glow)"/>
-        </g>
-        <g id="measure"><line x1="0" y1="0" x2="0" y2="200" stroke="#fb5570" stroke-width="1.5" stroke-dasharray="3 3"/><circle class="mdot" cx="0" cy="0"/></g>
-      </svg>
-      <div class="cap"><span id="capL">quantum Fourier transform</span><span id="capR"></span></div>
-    </div>
-    <div class="status" id="status"><span class="mk">▸</span><span id="statustxt">ready — launch the attack</span></div>
-    <div class="readout" id="readout"></div>
-    <div class="flag" id="flag"></div>
-    <button class="go" id="go">▶ Unleash the quantum computer</button>
-  </div>
-
-  <div class="takeaway">
-    The <b>only</b> difference between the two? One line — <code id="oneline">register("ml-kem-768", …)</code><br>
-    Same app, same attacker. That is the whole migration.
-  </div>
-
-  <details class="more">
-    <summary>How do I know this is real, not a movie?</summary>
-    <div class="body" id="moreBody"></div>
-  </details>
-</div>
-
-<script>
-const LOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
-const OPEN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>';
-const D=window.ATTACK, $=id=>document.getElementById(id);
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const fmtKB=n=>n>=1024?(n/1024).toFixed(2)+' KB':n+' B';
-let mode='rsa', busy=false;
-
-$('lock').innerHTML=LOCK;
-$('oneline').textContent=D&&D.migration?D.migration.registry_line:'register("ml-kem-768", …)';
-$('moreBody').innerHTML = D ? `
-  <b>The break is computed live.</b> When you hit the button, <code>demo/quantum.js</code> builds a real
-  quantum superposition, runs a Fourier transform (the glowing spectrum above <i>is</i> that output),
-  measures it under the Born rule, and decrypts the vault with the key it recovers — from only the public key
-  and ciphertext. Re-run it: a different measurement, the same factors. That's a real quantum sample.<br><br>
-  <b>Verified, not asserted.</b> <code>make verify</code> checks the JS engine against Python's numpy statevector
-  element-by-element and proves a fake engine fails. <b>45 tests</b> cover the rest.<br><br>
-  <b>Honest limits.</b> The RSA here is a deliberately tiny 35-bit toy so a simulator fits in a browser;
-  real RSA-2048 would need ~6,100 logical qubits (none exist yet) — the point is the <i>pattern</i>, not the toy.
-  The ML-KEM side is the genuine FIPS 203 primitive via <code>kyber-py</code>. Apache-2.0 ·
-  <a href="https://github.com/CGovS/PQC" target="_blank">github.com/CGovS/PQC</a>` : 'run make web';
-
-// ---------- spectrum rendering ----------
-function paths(norm){
-  const W=1000,H=200,n=norm.length; let line='M0,'+H, area='M0,'+H;
-  for(let i=0;i<n;i++){ const x=(i/(n-1))*W, y=H-norm[i]*(H-14); line+=` L${x.toFixed(1)},${y.toFixed(1)}`; area+=` L${x.toFixed(1)},${y.toFixed(1)}`; }
-  return {line, area:area+` L${W},${H} Z`};
-}
-function downsample(dist,bins){
-  const M=dist.length,out=new Array(bins).fill(0);
-  for(let i=0;i<M;i++){ const b=Math.min(bins-1,Math.floor(i/M*bins)); if(dist[i]>out[b])out[b]=dist[i]; }
-  const mx=Math.max(...out)||1; return out.map(v=>v/mx);
-}
-function drawSpectrum(norm){
-  const p=paths(norm); $('area').setAttribute('d',p.area); $('line').setAttribute('d',p.line);
-  $('wipe').setAttribute('width','0'); $('measure').classList.remove('show');
-  void $('scope').offsetWidth; $('wipe').setAttribute('width','1000');
-}
-
-// ---------- attack sequences ----------
-function reset(){
-  const s=$('stage'); s.classList.remove('cracked','held');
-  $('lock').innerHTML=LOCK; $('state').textContent='SEALED';
-  $('flag').className='flag'; $('flag').innerHTML=''; $('readout').textContent='';
-  $('measure').classList.remove('show'); $('wipe').setAttribute('width','0');
-  $('capR').textContent=''; $('capL').textContent='quantum Fourier transform';
-  const rsa=mode==='rsa';
-  s.className='stage '+(rsa?'rsa':'pqc');
-  $('algo').textContent=rsa?'Vault · RSA-35':'Vault · ML-KEM-768';
-  $('tag').textContent=rsa?'classical · integer-factoring problem':'post-quantum · Module-LWE lattice · FIPS 203';
-  $('status').className='status'; $('statustxt').textContent=rsa?'ready — launch the attack':'ready — same attacker, quantum-safe target';
-  $('go').className='go'; $('go').textContent='▶ Unleash the quantum computer'; $('go').disabled=false;
-}
-const setStatus=(t,cls='')=>{ $('status').className='status '+cls; $('statustxt').innerHTML=t; };
-
-async function attackRSA(){
-  const pub={n:D.before.n,e:D.before.e};
-  const res=QC.crackRSA(pub,D.before.ciphertext);        // live: factor -> d -> decrypt
-  const pf=res.shor.pf, a=res.shor.a, N=pub.n, r=res.shor.period, half=res.shor.half;
-  // self-check: values must be a consequence of the measurement, not decoration
-  const okc = QC.periodFromMeasurement(pf.measuredC,pf.M,a,N)===r && QC.powmodInt(a,Math.floor(r/2),N)===half && res.factors[0]*res.factors[1]===N;
-  if(!okc){ setStatus('self-check failed — aborting','hot'); $('go').disabled=false; return; }
-
-  setStatus(`spinning up ${pf.t+pf.n} qubits · preparing Σ|x⟩|${a}<sup>x</sup> mod ${N}⟩`); await sleep(750);
-  setStatus('running the quantum Fourier transform…');
-  $('capL').textContent=`interference spectrum · base a=${a}`;
-  drawSpectrum(downsample(QC.distribution(a,N),250)); await sleep(1250);
-
-  // measurement collapse
-  const mx=(pf.measuredC/pf.M)*1000;
-  $('measure').querySelector('line').setAttribute('x1',mx); $('measure').querySelector('line').setAttribute('x2',mx);
-  const dot=$('measure').querySelector('circle'); dot.setAttribute('cx',mx); dot.setAttribute('cy',18);
-  $('measure').classList.add('show'); $('capR').innerHTML=`measured <span class="m">c=${pf.measuredC}/${pf.M}</span>`;
-  setStatus(`measurement collapses → <b>c=${pf.measuredC}</b> → period <b>r=${r}</b>`,'ok'); await sleep(1050);
-
-  setStatus(`gcd trick cracks the modulus: <b>${N} = ${res.factors[0]} × ${res.factors[1]}</b>`,'hot'); await sleep(950);
-  $('readout').innerHTML=`period r=${r} · ${N} = ${res.factors[0]}×${res.factors[1]} · private key d=${res.d} · decrypting vault…`;
-  await sleep(650);
-
-  $('stage').classList.add('cracked'); $('lock').innerHTML=OPEN; $('state').textContent='CRACKED';
-  const f=$('flag'); f.className='flag crack show'; f.innerHTML='<span class="k">vault decrypted in-browser — recovered from ciphertext alone:</span><span id="dec"></span>';
-  await decode($('dec'), res.plaintext);
-  const match=res.plaintext===D.secret_plaintext;
-  setStatus(`cracked — flag recovered from public data alone${match?' · ✓ matches the sealed secret':''}`,'hot');
-  finishBtn();
-}
-
-async function attackPQC(){
-  const at=D.after.attack, probe=at.probe||{};
-  const liveModulus=QC.probeFactoringTarget({family:D.after.family,ek_bytes:D.after.public_bytes}); // -> null
-  const hasN=liveModulus!==null;
-  setStatus('same quantum computer · same factoring routine — booting…'); await sleep(750);
-  setStatus(`scanning the ${D.after.algorithm} public key (${fmtKB(D.after.public_bytes)}) for a period to exploit…`);
-  $('capL').textContent='no periodic structure — Module-LWE'; $('capR').textContent='';
-  drawSpectrum(flatNoise(250)); await sleep(1300);
-  setStatus(`integer modulus to factor: <b>${hasN?'yes':'no'}</b> — Shor's algorithm has no input`,'ok'); await sleep(950);
-
-  $('stage').classList.add('held'); $('state').textContent='HELD';
-  const f=$('flag'); f.className='flag safe show';
-  f.innerHTML=`<span class="k">the identical attack, on the migrated vault:</span><b style="color:var(--green)">ATTACK FAILED · VAULT INTACT</b><br>${at.reason}<br><span style="color:var(--dim)">Legitimate key still opens it: <b style="color:var(--green)">${D.after.opened_with_key?'yes ✓':'no'}</b></span>`;
-  setStatus("held — a lattice key exposes no modulus, so period-finding dies",'ok');
-  finishBtn();
-}
-function flatNoise(bins){ const o=[]; for(let i=0;i<bins;i++)o.push(0.02+Math.random()*0.05); return o; }
-function finishBtn(){ const b=$('go'); b.disabled=false; b.className='go again'; b.textContent=mode==='rsa'?'↻ run again (fresh measurement)':'↻ run again'; }
-
-// scramble→resolve decode effect
-function decode(el,text){
-  return new Promise(res=>{
-    const pool='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_{}!@#$%&*';
-    const settle=text.split('').map((_,i)=>6+i*1.4); let f=0;
-    const id=setInterval(()=>{
-      let out=''; for(let i=0;i<text.length;i++) out += f>=settle[i]?text[i]:pool[Math.floor(Math.random()*pool.length)];
-      el.textContent=out; f++;
-      if(f>settle[text.length-1]+2){ clearInterval(id); el.textContent=text; res(); }
-    },28);
-  });
-}
-
-async function launch(){
-  if(busy) return; busy=true; const b=$('go'); b.disabled=true; b.textContent='attacking…';
-  reset(); b.disabled=true; b.textContent='attacking…';
-  try{ if(mode==='rsa') await attackRSA(); else await attackPQC(); } finally{ busy=false; }
-}
-
-document.querySelectorAll('.seg button').forEach(btn=>btn.addEventListener('click',()=>{
-  if(busy) return;
-  document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
-  mode=btn.dataset.k; reset();
-}));
-$('go').addEventListener('click',launch);
-if(!D||!window.QC){ $('statustxt').textContent='attack_data.js / quantum.js not found — run: make web'; }
-else reset();
-</script>
-</body>
-</html>
+<header class="nav wrap"><a class="brand" href="/" aria-label="PQC Lab home"><span class="brand-mark">▥</span> PQC<span class="muted"> / LAB</span></a><nav><a href="#migration">How migration works</a><a href="https://github.com/CGovS/PQC" target="_blank" rel="noopener">Source ↗</a></nav></header>
+<main class="wrap">
+<section class="hero">
+<div><p class="eyebrow"><span class="dot"></span> A SMALL EXPERIMENT ABOUT A BIG CHANGE</p><h1>Same secret.<br><span>Different ending.</span></h1><p class="intro">Two vaults. One hidden flag. Watch a simulated quantum attack break a tiny RSA lock—and see why a post-quantum lock needs a different attack.</p></div>
+<div class="hero-action"><button id="run" disabled>Connecting to the lab…</button><p id="connection" role="status">Checking the local encryption engine</p></div>
+</section>
+<div class="experiment-bar"><div class="steps"><span id="step-1">01 <b>Encrypt the flag</b></span><i>→</i><span id="step-2">02 <b>Run the attack</b></span><i>→</i><span id="step-3">03 <b>Compare the result</b></span></div><span class="micro" id="run-id">NEW FLAG EACH RUN</span></div>
+<div id="error" class="error" role="alert" hidden></div>
+<section class="comparison" aria-label="Before and after cryptography comparison">
+<article class="vault" id="rsa-panel">
+<div class="panel-head"><div><p class="eyebrow">BEFORE / CLASSICAL</p><h2>RSA <span>the old lock</span></h2></div><span class="badge" id="rsa-badge">Ready</span></div>
+<p class="panel-intro">Its secret key can be recovered by factoring a number. Shor’s algorithm finds the pattern that helps.</p>
+<div class="maze" id="rsa-maze" role="img" aria-label="Illustrated maze leading to the RSA vault"></div>
+<div class="stage-caption"><span class="legend"><i></i> attack route</span><span>Illustration · follows execution milestones</span></div>
+<div class="narration" id="rsa-status" aria-live="polite">A fresh flag will be encrypted here.</div>
+<code class="current-code" id="rsa-current">vault = seal(secret, public_key)</code>
+<div class="result" id="rsa-result"><span class="result-icon">⚑</span><div><strong>Secret not created yet</strong><small>The attacker will receive only a public key and ciphertext.</small></div></div>
+<details class="code-drawer"><summary>Watch the code <span>PYTHON + JAVASCRIPT</span></summary><div class="code-body"><p>Completed operations from this run. The animation paces their real outputs.</p><ol id="rsa-log"></ol><details><summary>Actual encryption function</summary><pre id="rsa-source">Start an experiment to load the executed source.</pre></details><details><summary>Measured probabilities · RSA only</summary><svg id="spectrum" viewBox="0 0 500 100" role="img" aria-label="RSA Fourier measurement distribution"></svg><p id="measurement">Available after the simulation.</p></details></div></details>
+</article>
+<article class="vault" id="pqc-panel">
+<div class="panel-head"><div><p class="eyebrow">AFTER / POST-QUANTUM</p><h2>ML-KEM <span>the new lock</span></h2></div><span class="badge" id="pqc-badge">Ready</span></div>
+<p class="panel-intro">A different mathematical foundation protects the key. The RSA factoring attack does not apply.</p>
+<div class="maze" id="pqc-maze" role="img" aria-label="Illustrated maze leading to the post-quantum vault"></div>
+<div class="stage-caption"><span class="legend"><i></i> same attack</span><span>ML-KEM-768 + AES-256-GCM</span></div>
+<div class="narration" id="pqc-status" aria-live="polite">The same flag will be encrypted here.</div>
+<code class="current-code" id="pqc-current">vault = seal(secret, public_key)</code>
+<div class="result" id="pqc-result"><span class="result-icon">◇</span><div><strong>Secret not created yet</strong><small>A new ML-KEM key pair is generated for every run.</small></div></div>
+<details class="code-drawer"><summary>Watch the code <span>PYTHON</span></summary><div class="code-body"><p>Actual local encryption and checks. No quantum simulation is run on ML-KEM.</p><ol id="pqc-log"></ol><details><summary>Actual encryption function</summary><pre id="pqc-source">Start an experiment to load the executed source.</pre></details><div class="checks" id="pqc-checks"></div></div></details>
+</article>
+</section>
+<p class="honesty"><b>A real computation, a deliberately tiny target.</b> RSA uses n = 33 (6 bits), not RSA-2048. The maze is a visual metaphor. “Shor not applicable” is not proof against every attack.</p>
+<section class="migration" id="migration"><div class="migration-title"><p class="eyebrow">HOW THE SWITCH WORKS</p><h2>Change the lock.<br> Keep the vault.</h2><p>PQC means <b>post-quantum cryptography</b>: algorithms designed to resist known quantum attacks. It runs on ordinary computers.</p></div><div class="migration-steps"><div><span>01</span><section><h3>Find where encryption lives</h3><p>This app sends every vault operation through one shared interface. Real companies first inventory their apps, certificates, vendors, and stored data.</p></section></div><div><span>02</span><section><h3>Choose a new way to protect the key</h3><p>RSA becomes ML-KEM. ML-KEM establishes a shared secret; HKDF derives an AES key; AES-GCM encrypts and authenticates the flag.</p><code>algorithm = <del>"rsa-toy"</del> <ins>"ml-kem-768"</ins></code></section></div><div><span>03</span><section><h3>Test before you switch</h3><p>Verify owner access, tampering, and wrong keys. Company rollouts also need compatible protocols, key rotation, data migration, and downgrade protection.</p></section></div></div></section>
+<details class="limits"><summary>What this experiment proves—and what it doesn’t <span>+</span></summary><div><p><b>RSA:</b> the browser recovers the key from public data with a Fourier-based simulation of Shor’s period-finding, then decrypts the ciphertext. A SHA-256 digest checks the recovered bytes. Tiny textbook RSA is also easy to break classically; this demonstrates a mechanism, not a practical RSA-2048 break.</p><p><b>PQC:</b> ML-KEM key generation, encapsulation, decapsulation, and AES-GCM encryption run on the local Python server. Owner access, wrong-key rejection, and tamper rejection are tested each run. The Shor dispatcher reports an unsupported target; it does not measure a “flat PQC spectrum.”</p><p><b>Simulation:</b> JavaScript and NumPy simulate the ideal measurement distribution, not physical hardware or a Qiskit gate circuit. The animated maze is an illustration, not the algorithm’s search space. Random measurements can repeat.</p><p><b>Deployment:</b> kyber-py is an educational, non-constant-time implementation. This lab is not production cryptography or a certified module. Swapping a setting here does not automatically migrate old ciphertext, certificates, or an enterprise.</p><details><summary>Shared vault source, used on both sides</summary><pre id="vault-source">Run the experiment to inspect the actual function.</pre></details><p class="sources"><a href="https://csrc.nist.gov/pubs/fips/203/final">NIST ML-KEM standard ↗</a> <a href="https://quantum.cloud.ibm.com/docs/en/tutorials/shors-algorithm">IBM: Shor’s algorithm ↗</a> <a href="https://www.nccoe.nist.gov/applied-cryptography/migration-to-pqc">NIST migration guidance ↗</a></p></div></details>
+<footer><span>PQC LAB <span class="muted">/ EDUCATIONAL EXPERIMENT</span></span><span>Built to explain. Open to inspect.</span></footer>
+</main>
+</body></html>

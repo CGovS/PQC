@@ -1,11 +1,7 @@
-"""Phase 5 — point the *same* quantum attacker at whatever sealed the vault.
+"""Dispatch an RSA-specific factoring attack, reporting unsupported targets.
 
-Against classical RSA it factors the modulus and opens the vault. Against
-ML-KEM it has nothing to factor: lattice security (Module-LWE) does not reduce
-to period-finding, so Shor gives no advantage. Crucially, the attacker decides
-applicability by *probing the public key* for an integer modulus — not by
-reading any 'is this safe?' flag on the algorithm — so the ML-KEM outcome is a
-discovered fact. The module returns a structured before/after for the demo.
+A missing RSA modulus is an applicability decision, not a security test of
+ML-KEM. No quantum simulation is run for an unsupported key type.
 """
 
 from __future__ import annotations
@@ -21,18 +17,9 @@ from .shor import resource_estimate
 
 
 def _factoring_target(public: Any) -> int | None:
-    """What Shor's routine needs to run: an integer modulus exposed by the
-    public key. RSA public keys carry ``n``; a lattice (ML-KEM) public key
-    carries no integer to factor, so this returns ``None`` for them.
-
-    The attack's applicability is decided by *probing the public key* here —
-    not by trusting any 'is this safe?' label on the algorithm. That is what
-    makes the ML-KEM 'nothing to break' outcome a discovered fact rather than
-    an assertion: flip ML-KEM's quantum_vulnerable flag to True and this probe
-    still finds no modulus.
-    """
+    """Read an RSA factoring target. This does not assess the key's security."""
     n = getattr(public, "n", None)
-    return n if isinstance(n, int) else None
+    return n if type(n) is int and n > 1 else None
 
 
 def run_quantum_attack(vault: Vault, public: Any, *, seed: int = 1,
@@ -42,14 +29,10 @@ def run_quantum_attack(vault: Vault, public: Any, *, seed: int = 1,
     Returns a dict describing whether Shor's algorithm even *applies*, whether
     it succeeded, and (for RSA) the quantum-period-finding trace for display.
     """
-    box = get_lockbox(vault.algorithm)
     modulus = _factoring_target(public)
 
     if modulus is None:
-        # The attacker booted Shor and inspected the public key for an integer
-        # modulus to factor. It found none — this target's public key is a
-        # lattice object, not an integer. Period-finding has no input, so the
-        # attack halts before it can start. Discovered, not declared.
+        # Unsupported target: no circuit or quantum measurement is executed.
         return {
             "applicable": False,
             "success": False,
@@ -60,20 +43,17 @@ def run_quantum_attack(vault: Vault, public: Any, *, seed: int = 1,
                 "public_key_bytes": len(getattr(public, "ek", b"")) or None,
             },
             "reason": (
-                "No factoring target. The attacker inspected the public key for "
-                "an integer modulus and found none — this is a lattice public "
-                "key, not an integer. Shor's algorithm breaks RSA/ECC by period-"
-                "finding (integer factoring / discrete logs); ML-KEM's security "
-                "rests on Module-LWE, which does not reduce to period-finding, so "
-                "there is nothing to feed the quantum computer. Note this outcome "
-                "comes from probing the key, not from trusting a safety label."
+                "Not applicable: this implementation attacks RSA factoring keys. "
+                "ML-KEM is a lattice-based key encapsulation mechanism. No Shor "
+                "circuit was run against it, and this dispatch result is not a "
+                "proof of post-quantum security."
             ),
         }
 
     # Public key exposes a modulus n: run the real quantum factoring attack.
     secret, priv, result = crack_vault(vault, public, seed=seed, force_quantum=force_quantum)
-    win = result.attempts[-1]
-    a, N = win["a"], public.n
+    win = result.attempts[-1] if result.attempts else {}
+    a, N = win.get("a"), public.n
     r = win.get("period")
     half_exp = pow(a, r // 2, N) if r else None
 

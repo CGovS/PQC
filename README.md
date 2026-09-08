@@ -1,109 +1,117 @@
-# PQC — a crypto-agility layer, demonstrated end to end
+# PQC Lab — same secret, different ending
 
-**Thesis:** the hard part of post-quantum migration is not the new algorithms
-(those are finished, standardized, and free) — it is that most software
-*hardcodes* its cryptography and cannot swap it. This project builds the thing
-enterprises actually lack — a **crypto-agility layer** — and then proves its
-value with a story you can run on a laptop:
+An educational side-by-side experiment. A local Python server encrypts a fresh
+hidden flag with toy RSA and ML-KEM-768 + AES-256-GCM. A browser worker receives
+only RSA public data, simulates Shor's period-finding, recovers the private
+exponent, and decrypts the flag. Animated mazes illustrate execution milestones.
 
-1. a small application (**the maze**) locks a secret using classical RSA;
-2. a **simulated Shor's algorithm** factors the RSA modulus and opens it;
-3. the **same application**, unchanged, is re-sealed with a post-quantum
-   algorithm through a one-line registry swap, and the same attack fails.
+## Run locally
 
-> **Why this matters (the honest version).** The NIST post-quantum standards
-> (FIPS 203 / 204 / 205) are done and open source (liboqs, OpenSSL 3.5+).
-> Re-implementing them adds no value. The genuine, unsolved enterprise problem
-> is **migration**: crypto *discovery* (finding everywhere RSA/ECC is used),
-> **crypto-agility** (systems that hardcode the algorithm), and **hybrid
-> rollout**. The urgency is "harvest now, decrypt later" plus compliance
-> deadlines (NSM-10 / CNSA 2.0) — *not* a claim that a quantum computer is
-> imminent; that timeline is genuinely uncertain. This repo targets the part
-> that is real: agility.
+Python 3.14 and Node.js 26 were used for the tested environment (Python 3.11+
+supported by the package). From the source checkout:
 
-## Status
-
-| Phase | What | State |
-|------:|------|-------|
-| 1 | Crypto-agility layer + classical RSA maze + OSS packaging | ✅ built |
-| 2 | Simulated Shor's algorithm that breaks the maze | ✅ built |
-| 3 | End-to-end "the maze is broken" demonstration | ✅ built |
-| 4 | Post-quantum migration (ML-KEM, FIPS 203) via a registry swap | ✅ built |
-| 5 | Re-run the same attack against PQC — it fails | ✅ built |
-| 6 | Hardening, docs, packaging | ⏳ ongoing |
-
-**See it:** `make web` → open <http://localhost:8765/> for the visual
-before/after — RSA cracked by the simulated quantum computer on the left,
-ML-KEM holding against the identical attack on the right.
-
-> **A note on the quantum simulator.** The plan named Qiskit; the shipped
-> attacker is instead a from-scratch **numpy statevector simulation** (genuine
-> superposition → quantum Fourier transform → Born-rule measurement →
-> continued-fraction period extraction). Reason: Qiskit removed its built-in
-> `Shor`, and Aer is a heavy, volatile dependency; a numpy statevector sim is
-> transparent, reproducible, and honest about its resource ceiling (the full
-> Shor state is `2^(3n)` amplitudes for an n-bit modulus; the sim holds only a
-> `2^(2n)` counting column at a time). A Qiskit circuit view can be added later
-> without changing the result.
-
-## Repository layout
-
-```
-cryptolayer/     the crypto-agility seam — the actual deliverable
-  interface.py     the LockBox ABC every algorithm implements
-  classical.py     toy RSA (DELIBERATELY WEAK — see below)
-  pqc.py           ML-KEM (FIPS 203) via kyber-py, KEM-DEM hybrid
-  registry.py      name -> algorithm; migration happens here in one line
-maze/            the vulnerable application
-  keys.py          the RSA modulus ladder + reporting metadata
-  vault.py         seals/opens a secret — mentions no algorithm by name
-  cli.py           `python -m maze.cli demo`
-attacker/        the simulated quantum computer
-  shor.py          statevector Shor: superposition -> QFT -> measure -> period
-  break_maze.py    factor n, rebuild the private key, open the vault
-  campaign.py      point the SAME attacker at RSA vs ML-KEM (Phase 5)
-  report.py        emit the before/after data the web demo renders
-demo/            the visual before/after (index.html + generated data)
-tests/           round-trip + interface + attack + PQC tests (45)
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-lock.txt
+.venv/bin/python -m pip install --no-deps -e .
+make web
 ```
 
-The application (`maze/`) never imports a concrete algorithm; it asks the
-registry for one by name. That is what lets the classical → post-quantum change
-be configuration, not code.
+Open http://localhost:8765. `make web PORT=8766` selects another port.
+The new UI requires this server: a static file server cannot perform the
+live encryption. If the engine is missing, the page says so; it never falls
+back to recorded results. No external services or credentials are needed.
 
-## Quick start
+## Architecture and trust boundary
 
-```bash
-make demo     # seal a secret with RSA and open it, no dependencies needed
-make setup    # install numpy + kyber-py + pytest (for attacker, PQC, tests)
-make test     # 45 tests: round-trip + interface + Shor attack + ML-KEM
-make report   # regenerate the before/after attack data
-make web      # serve the visual demo at http://localhost:8765/
+```text
+browser → POST /api/run → maze/lab.py
+                           ├─ registry → toy RSA → vault ciphertext
+                           └─ registry → ML-KEM → HKDF → AES-GCM → vault ciphertext
+browser ← public keys, ciphertext, operation outputs, SHA-256 commitment
+   └─ isolated worker → Shor simulation → recovered RSA key → decrypted bytes
+browser → compare SHA-256(recovered bytes) with the commitment
 ```
 
-The maze is pure standard library. The attacker needs `numpy`; the
-post-quantum layer needs `kyber-py` (both installed by `make setup`).
+- `cryptolayer/`: interchangeable `LockBox` implementations and lazy registry.
+- `maze/vault.py`: shared seal/open operations. `maze/lab.py`: creates a fresh
+  challenge and performs owner, tamper, and wrong-key checks.
+- `maze/server.py`: loopback server with a public asset allowlist, local Host/
+  Origin checks, and no code execution endpoint or arbitrary file serving.
+- `attacker/shor.py`: ideal period-finding simulation with NumPy FFT;
+  `break_maze.py`: factor → exponent → decrypt;
+  `campaign.py`: RSA-specific attack dispatch.
+- `demo/quantum.js`: equivalent JavaScript simulation; `worker.js`: runs it
+  off the main UI thread; `app.js`: presentation and digest verification.
+- `attacker/report.py`: optional offline report, explicitly separate from the
+  live demo. Its plaintext and computed factors are **not served to the UI**.
+- `attacker/verify.py`, `demo/parity_check.js`, `tests/`: verification.
 
-## Honest constraints (read before trusting the demo)
+The live response never includes the flag, private keys, or RSA factors.
+Encryption code shown in the drawer is retrieved from the executed source.
+Operation timings are measured server-side. The animation plays completed
+results at a readable pace; it is not a debugger stepping the CPU instruction
+by instruction. The maze route is illustrative, not Shor searching corridors.
 
-- **The RSA here is a toy and broken by design.** Moduli are tiny (`n` ∈
-  {15, 21, 35}) so that a *classical simulation* of Shor's algorithm can
-  actually factor them. Never use `cryptolayer/classical.py` for anything real.
-- **A simulated quantum computer cannot break real RSA.** A statevector
-  simulator holds `2^q` amplitudes for `q` qubits, so it caps out around a few
-  dozen qubits — enough for these toy moduli (the maze factorization's full
-  state is `2^18` amplitudes, `q=18`), nowhere near RSA-2048 (`q=6144`, i.e.
-  `2^6144`). The attacker factors the toy moduli honestly *and* ships a resource
-  estimate; that estimate — not the tiny live break — is what generalizes.
-- **The post-quantum side is real, the DEM is not the point.** ML-KEM is the
-  genuine FIPS 203 primitive (via `kyber-py`). Because a KEM only transports a
-  shared secret, the payload is sealed with a stdlib encrypt-then-MAC DEM
-  (SHA-256 CTR + HMAC-SHA-256); a production system would use AES-256-GCM or
-  ChaCha20-Poly1305. Swapping the DEM does not change the migration story — the
-  point is that the *public-key* primitive is now lattice-based, so Shor's
-  algorithm has nothing to factor.
+## What is real
 
-## License
+**RSA:** the main demonstration uses n=33, e=3, d=7. It applies textbook RSA to
+base-n digits and recovers the bytes using the factored private key. The former
+n=35 example had e=d=5 and could decrypt with the public exponent: that flaw is
+fixed and regression-tested. The 15/21 teaching cases remain in CLI tests and
+are also degenerate; they are not the main browser demonstration.
 
-Apache-2.0. See [LICENSE](LICENSE). (Copyright holder is currently `CGovS`;
-replace with your legal name/entity before any formal release.)
+**Shor:** both engines explicitly calculate modular powers, Fourier-transform
+work-register columns, sum Born probabilities, sample, recover candidate periods
+by continued fractions, and extract factors with gcd. The demo disables the
+lucky classical gcd shortcut. Invalid measurements are retried and logged.
+This is a classical simulation of ideal Shor period-finding, **not Qiskit or a
+physical quantum computer**. It cannot demonstrate a practical RSA-2048 break.
+N is limited to 127 to prevent runaway allocation.
+
+**PQC:** kyber-py implements ML-KEM per FIPS 203. Tests independently compare
+keys and encapsulation/decapsulation with OpenSSL through cryptography, in
+both directions. HKDF-SHA256 derives a 256-bit key; AES-GCM encrypts/authenticates
+the payload. Format, parameter set, and KEM ciphertext are bound as associated
+data. The previous custom SHA256 stream/HMAC envelope is no longer accepted.
+This wire-format change is versioned as `pqc-lab-v2`.
+
+**Limits:** kyber-py is educational and not constant-time. This is not a
+production protocol, security certification, or FIPS-validated module.
+Shor's RSA factoring attack is *not applicable* to ML-KEM. A missing `n` field
+is not evidence of security, and no PQC spectrum is calculated or invented.
+Owner round-trip, wrong-key rejection, and tamper rejection are real but do not
+prove resistance to every classical or quantum attack.
+
+## Verification
+
+```sh
+make test       # regression tests, analytic QFT check, independent ML-KEM interop
+make verify     # RSA recovery, negative PQC checks, JS/NumPy distributions
+```
+
+Distribution parity covers several bases/moduli plus an analytic order-4 case.
+Controlled random draws check inverse-CDF sampling. Fresh byte vectors include
+UTF-8 and binary data. Missing Node makes verification incomplete (exit 2), not
+successful. Observing different samples alone is not a proof of quantum
+computation. See `docs/AUDIT.md` for findings and practical limits.
+
+## Real migration
+
+The registry makes the algorithm selectable for this already-abstracted app.
+A real company must inventory crypto, select compatible protocols/providers,
+rotate keys, re-encrypt or rewrap stored data, handle certificates/signatures,
+test interoperability/performance, and prevent silent downgrades. Classical +
+PQC hybrid key establishment requires a reviewed combiner/protocol: having two
+registered algorithms is not a hybrid implementation.
+
+The suggested human gates are: approve inventory/scope; review a staging
+migration and compatibility evidence; approve a production rollout and rollback
+policy. Agents can prepare these artifacts; humans own production decisions.
+
+Sources: [NIST ML-KEM](https://csrc.nist.gov/pubs/fips/203/final),
+[IBM Shor tutorial](https://quantum.cloud.ibm.com/docs/en/tutorials/shors-algorithm),
+[NIST migration project](https://www.nccoe.nist.gov/applied-cryptography/migration-to-pqc),
+[kyber-py limitations](https://github.com/GiacomoPope/kyber-py).
+
+Apache-2.0; see LICENSE. Local version snapshots live in ignored `backups/`.

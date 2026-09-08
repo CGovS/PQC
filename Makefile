@@ -2,7 +2,7 @@
 # the attacker and PQC layer need `make setup` (numpy + kyber-py).
 .PHONY: help setup test verify demo demo-ladder report web clean
 
-PY ?= python3
+PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PORT ?= 8765
 
 help:
@@ -34,9 +34,9 @@ demo-ladder:
 report:
 	$(PY) -m attacker.report --level ceiling --seed 3
 
-web: report
+web:
 	@echo "serving visual demo -> http://localhost:$(PORT)/"
-	$(PY) -m http.server $(PORT) --directory demo
+	$(PY) -m maze.server --port $(PORT)
 
 clean:
 	rm -rf build dist *.egg-info .pytest_cache

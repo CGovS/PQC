@@ -16,11 +16,11 @@ from cryptolayer.registry import get_lockbox
 # on a laptop-class machine.
 LEVEL_INFO: dict[str, dict] = {
     "warmup": {"n": 15, "bits": 4, "sim_ok": True,
-               "note": "canonical Shor teaching example"},
+               "note": "degenerate teaching example; public exponent also decrypts"},
     "easy": {"n": 21, "bits": 5, "sim_ok": True,
-             "note": "classic factor-21 simulation target"},
-    "ceiling": {"n": 35, "bits": 6, "sim_ok": True,
-                "note": "honest ceiling for a laptop statevector sim"},
+             "note": "degenerate teaching example; not the main demo"},
+    "ceiling": {"n": 33, "bits": 6, "sim_ok": True,
+                "note": "6-bit teaching example; distinct public/private exponents"},
 }
 
 DEFAULT_LEVEL = "warmup"

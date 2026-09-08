@@ -33,7 +33,7 @@ def test_mlkem_tamper_is_detected():
     tampered = bytearray(vault.ciphertext)
     tampered[-3] ^= 0x01  # flip a bit inside the base64 tag/body
     vault.ciphertext = bytes(tampered)
-    with pytest.raises((ValueError, Exception)):
+    with pytest.raises(ValueError):
         open_vault(vault, kp.private)
 
 
@@ -42,7 +42,7 @@ def test_wrong_key_cannot_open():
     good = box.generate_keypair()
     other = box.generate_keypair()
     vault = seal(SECRET, good.public, algorithm="ml-kem-768")
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         open_vault(vault, other.private)
 
 
@@ -66,7 +66,7 @@ def test_quantum_attack_breaks_rsa_but_not_pqc():
 def test_build_report_before_after():
     report = build_report(level="ceiling", seed=3)
     assert report["before"]["attack"]["success"] is True
-    assert report["before"]["attack"]["factors"][0] * report["before"]["attack"]["factors"][1] == 35
+    assert report["before"]["attack"]["factors"][0] * report["before"]["attack"]["factors"][1] == 33
     assert report["after"]["attack"]["success"] is False
     assert report["after"]["opened_with_key"] is True
     assert report["migration"]["application_code_changes"] == 0

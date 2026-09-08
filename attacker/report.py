@@ -9,7 +9,7 @@ Runs the whole story on real data:
 
 Emits JSON and a JS shim so the demo works over http:// or file://.
 
-    python -m attacker.report            # default RSA level = ceiling (n=35)
+    python -m attacker.report            # default RSA level = ceiling (n=33)
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def build_report(level: str = "ceiling", seed: int = 1,
         "migration": {
             "application_code_changes": 0,
             "registry_line": f'register("{pqc_algo}", _mlkem_factory("{pqc_level}"))',
-            "note": "The maze app never named an algorithm; only the registry changed.",
+            "note": "For this application, select a new backend and generate new keys; reseal data. Existing ciphertext is not migrated automatically.",
         },
     }
 

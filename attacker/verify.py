@@ -66,10 +66,8 @@ def verify_rsa_break(c: Checker) -> None:
                 and result.factors[0] * result.factors[1] == n,
                 f"n={n:>3} ({level}): Shor factored it -> {tuple(sorted(result.factors))} "
                 f"via period-finding (a={result.attempts[-1]['a']}, r={result.attempts[-1].get('period')})")
-        # The d-equality check is the real teeth: with tiny squarefree moduli a
-        # *wrong* exponent congruent to the true one mod lambda(n) can still
-        # decrypt correctly, so `recovered == secret` alone is not proof the true
-        # key was found — the two checks together are.
+        # Both implementations choose the inverse modulo phi. Other exponents
+        # congruent modulo lambda can also decrypt correctly.
         c.check(priv.d == kp.private.d,
                 f"n={n:>3} ({level}): reconstructed private exponent d={priv.d} equals the true key")
         c.check(recovered == secret,
@@ -77,7 +75,7 @@ def verify_rsa_break(c: Checker) -> None:
 
 
 def verify_mlkem_defense(c: Checker) -> None:
-    print("\n[2] ML-KEM defense is real (round-trip, tamper-evident, no target for Shor)")
+    print("\n[2] ML-KEM implementation checks (round-trip, tamper, attack applicability)")
     box = get_lockbox("ml-kem-768")
     kp = box.generate_keypair()
     secret = DEFAULT_SECRET
@@ -97,7 +95,7 @@ def verify_mlkem_defense(c: Checker) -> None:
         open_vault(tampered, kp.private)
     except ValueError:
         rejected = True
-    c.check(rejected, "tampered ciphertext is rejected (encrypt-then-MAC catches it)")
+    c.check(rejected, "tampered ciphertext is rejected (AES-GCM authentication)")
 
     # The SAME attacker: no integer modulus in a lattice public key.
     attack = run_quantum_attack(vault, kp.public, seed=3)
@@ -129,7 +127,7 @@ def verify_js_parity(c: Checker) -> None:
     # so the cross-check compares the JS engine to a live Python computation.
     box = get_lockbox("rsa-toy")
     challenge = {
-        "dist": {"a": 17, "N": 35, "prob": measurement_distribution(17, 35).tolist()},
+        "distributions": [{"a": a, "N": n, "prob": measurement_distribution(a, n).tolist()} for a, n in [(2, 15), (2, 21), (13, 33), (17, 35)]],
         "vectors": [
             _seal_vector(box, "ceiling", DEFAULT_SECRET, "maze flag (ascii)"),
             _seal_vector(box, "ceiling", "héllo café ✓".encode(), "utf-8 multibyte"),
@@ -155,7 +153,7 @@ def verify_js_parity(c: Checker) -> None:
 
 def main() -> int:
     print("=" * 68)
-    print(" PQC — verifying the demo is an ACTUAL hack and ACTUAL PQC defense")
+    print(" PQC — RSA recovery and PQC implementation checks")
     print("=" * 68)
     c = Checker()
     verify_rsa_break(c)
@@ -168,8 +166,8 @@ def main() -> int:
     if c.skips:
         print(f" RESULT: \033[33mPASSED with {c.skips} check(s) SKIPPED\033[0m — not fully verified "
               "(install any missing tools and re-run).")
-        return 0
-    print(" RESULT: \033[32mALL CHECKS PASSED\033[0m — the break and the defense are real.")
+        return 2
+    print(" RESULT: \033[32mALL CHECKS PASSED\033[0m — implementation checks complete; not a proof of security.")
     return 0
 
 

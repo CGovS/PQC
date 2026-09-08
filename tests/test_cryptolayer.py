@@ -36,7 +36,7 @@ def test_unknown_level_raises():
         get_lockbox("rsa-toy").generate_keypair(level="nope")
 
 
-@pytest.mark.parametrize("level,expected_n", [("warmup", 15), ("easy", 21), ("ceiling", 35)])
+@pytest.mark.parametrize("level,expected_n", [("warmup", 15), ("easy", 21), ("ceiling", 33)])
 def test_ladder_moduli(level, expected_n):
     p, q = DEFAULT_LADDER[level]
     assert p * q == expected_n

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pqc-maze"
-version = "2.0.0"
-description = "A crypto-agility layer + a classical-crypto maze, broken by a simulated Shor's algorithm and then migrated to post-quantum crypto (ML-KEM) — same app, one-line swap."
+version = "3.0.0"
+description = "A crypto-agility layer + a classical-crypto maze, broken by a simulated Shor's algorithm and then migrated to post-quantum crypto (ML-KEM) — educational before/after vault experiment."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -17,17 +17,14 @@ keywords = ["post-quantum", "cryptography", "crypto-agility", "shor", "rsa", "ml
 dependencies = []
 
 [project.optional-dependencies]
-# Phase 2 — the simulated Shor attacker. Implemented as a from-scratch numpy
-# statevector simulation (real superposition + QFT + Born-rule measurement)
-# rather than Qiskit: Qiskit removed its built-in Shor and the Aer install is
-# heavy, whereas a numpy statevector sim is transparent and reproducible.
+# Ideal Fourier-based simulator. No Qiskit dependency or hardware claim.
 attacker = ["numpy>=1.26"]
 # Phase 4 — the post-quantum migration. ML-KEM (FIPS 203) via the pure-Python
 # `kyber-py` reference implementation (no system libs to build).
-pqc = ["kyber-py>=1.0.1"]
+pqc = ["kyber-py>=1.0.1,<2", "cryptography>=50,<51"]
 # Everything needed to regenerate the visual demo's data.
-demo = ["numpy>=1.26", "kyber-py>=1.0.1"]
-dev = ["pytest>=8", "numpy>=1.26", "kyber-py>=1.0.1"]
+demo = ["numpy>=1.26", "kyber-py>=1.0.1,<2", "cryptography>=50,<51"]
+dev = ["pytest>=8", "numpy>=1.26", "kyber-py>=1.0.1,<2", "cryptography>=50,<51"]
 
 [project.scripts]
 maze = "maze.cli:main"

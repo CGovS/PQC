@@ -6,14 +6,10 @@ apply an inverse quantum Fourier transform (via the DFT), and measure under
 the Born rule. Classical continued fractions turn the measured value into the
 period ``r``, and ``gcd(a^(r/2) ± 1, N)`` yields the factors.
 
-Honest limit: Shor's full statevector has ``2^(3n)`` amplitudes for an n-bit
-modulus — a ``2n``-qubit counting register tensored with an ``n``-qubit work
-register (``resource_estimate`` reports this). This simulator exploits the
-period structure to hold only a ``2^(2n)``-sized counting column per distinct
-work value, but even that counting register is built with a Python loop over
-``M = 2^(2n)`` states, so the practical laptop ceiling is ~13-15 bits — enough
-for the toy moduli, nowhere near real RSA. ``resource_estimate`` spells out the
-gap.
+The ideal joint register uses 3n qubits in this formulation. Computation
+stores one counting column at a time, groups work-register values, and sums
+Born probabilities. It is a classical simulation of an ideal subroutine,
+not a gate-level hardware circuit. Allocation is capped at N <= 127.
 """
 
 from __future__ import annotations
@@ -50,6 +46,8 @@ def measurement_distribution(a: int, N: int) -> np.ndarray:
     JavaScript engine can be cross-checked against this numpy statevector one
     element-by-element — verifying the quantum machinery, not just the factors.
     """
+    if type(N) is not int or not 3 <= N <= 127 or type(a) is not int or not 1 < a < N or math.gcd(a, N) != 1:
+        raise ValueError("simulation requires coprime base and 3 <= N <= 127")
     n = n_qubits_for(N)
     t = 2 * n                     # standard choice: 2n counting qubits
     M = 1 << t
@@ -139,6 +137,8 @@ def shor_factor(N: int, *, seed: int = 1, max_attempts: int = 40,
     quantum period-finding subroutine — used by the demo to always exercise
     (and visualize) the quantum machinery.
     """
+    if type(N) is not int or not 3 <= N <= 127:
+        raise ValueError("educational simulator supports 3 <= N <= 127")
     rng = random.Random(seed)
     if N % 2 == 0:
         return ShorResult(N, True, factors=(2, N // 2))

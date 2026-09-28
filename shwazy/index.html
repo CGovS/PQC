@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>Chooser</title>
+<style>
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #000;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hint {
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+    text-align: center; color: #666; font-size: 20px; pointer-events: none;
+    transition: opacity .3s;
+  }
+  /* Hidden settings panel */
+  #settings {
+    position: fixed; inset: 0; background: rgba(0,0,0,.92); color: #eee;
+    display: none; align-items: center; justify-content: center; z-index: 10;
+    touch-action: auto;
+  }
+  #settings.open { display: flex; }
+  #settings .box { width: min(360px, calc(100% - 32px)); background: #151515;
+    border-radius: 16px; padding: 20px; box-sizing: border-box; }
+  #settings h2 { margin: 0 0 16px; font-size: 18px; }
+  #settings label { display: block; margin: 14px 0 6px; font-size: 14px; color: #aaa; }
+  #swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  #swatches button { width: 38px; height: 38px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  #swatches button.sel { border-color: #fff; }
+  #swatches button.none { background: #333; color: #aaa; font-size: 11px; }
+  input[type=range] { width: 100%; }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 14px; }
+  #odds { font-size: 13px; color: #888; margin-top: 8px; line-height: 1.5; }
+  #close { margin-top: 20px; width: 100%; padding: 12px; border: 0; border-radius: 10px;
+    background: #fff; color: #000; font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">Everyone put a finger on the screen</div>
+
+<div id="settings">
+  <div class="box">
+    <h2>Settings</h2>
+    <label>Favored color</label>
+    <div id="swatches"></div>
+    <label>Advantage: <span id="wval"></span></label>
+    <input id="weight" type="range" min="1" max="11" step="1">
+    <div id="odds"></div>
+    <div class="row"><input id="first" type="checkbox"><span>First finger down always gets the favored color</span></div>
+    <button id="close">Done</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---- Config -------------------------------------------------------------
+  const PALETTE = [
+    { name: 'Red',    hex: '#ff3b30' },
+    { name: 'Orange', hex: '#ff9500' },
+    { name: 'Yellow', hex: '#ffcc00' },
+    { name: 'Green',  hex: '#34c759' },
+    { name: 'Teal',   hex: '#30d5c8' },
+    { name: 'Blue',   hex: '#0a84ff' },
+    { name: 'Purple', hex: '#bf5af2' },
+    { name: 'Pink',   hex: '#ff2d92' },
+    { name: 'White',  hex: '#f2f2f7' },
+    { name: 'Brown',  hex: '#a2845e' },
+  ];
+  const HOLD_MS = 2500;     // fingers must be steady this long before picking
+  const MIN_PLAYERS = 2;
+  const RADIUS = 48;
+  const MAX_WEIGHT = 11;    // slider max = "always wins"
+
+  const defaults = { favored: 'Green', weight: 4, firstGetsFavored: true };
+  let cfg = { ...defaults };
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem('chooser-cfg') || '{}')); } catch (e) {}
+  const save = () => { try { localStorage.setItem('chooser-cfg', JSON.stringify(cfg)); } catch (e) {} };
+
+  // ---- State --------------------------------------------------------------
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+  const touches = new Map();   // pointerId -> {x, y, color, born}
+  let lastChange = performance.now();
+  let winner = null;           // pointerId
+  let winTime = 0;
+  let dpr = 1;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  function pickColor() {
+    const used = new Set([...touches.values()].map(t => t.color.name));
+    const fav = PALETTE.find(p => p.name === cfg.favored);
+    if (fav && cfg.firstGetsFavored && touches.size === 0) return fav;
+    // Don't hand out the favored color randomly when it's reserved for finger #1
+    const pool = PALETTE.filter(p => !used.has(p.name) &&
+      !(fav && cfg.firstGetsFavored && p.name === fav.name));
+    const list = pool.length ? pool : PALETTE;
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  // The rigged draw: favored color gets `weight`, everyone else 1.
+  function chooseWinner() {
+    const ids = [...touches.keys()];
+    const favId = ids.find(id => touches.get(id).color.name === cfg.favored);
+    if (favId !== undefined && cfg.weight >= MAX_WEIGHT) return favId;
+    const weights = ids.map(id => id === favId ? cfg.weight : 1);
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < ids.length; i++) { r -= weights[i]; if (r < 0) return ids[i]; }
+    return ids[ids.length - 1];
+  }
+
+  // ---- Input --------------------------------------------------------------
+  function down(e) {
+    if (settingsEl.classList.contains('open')) return;
+    if (winner !== null) return;               // round over; lift all to reset
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY, color: pickColor(), born: performance.now() });
+    lastChange = performance.now();
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+  function move(e) {
+    const t = touches.get(e.pointerId);
+    if (t) { t.x = e.clientX; t.y = e.clientY; }
+  }
+  function up(e) {
+    if (!touches.has(e.pointerId)) return;
+    touches.delete(e.pointerId);
+    if (winner !== null) {
+      if (touches.size === 0) winner = null;   // everyone lifted: new round
+      return;
+    }
+    lastChange = performance.now();
+  }
+  canvas.addEventListener('pointerdown', down);
+  canvas.addEventListener('pointermove', move);
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ---- Render loop --------------------------------------------------------
+  function frame(now) {
+    const w = innerWidth, h = innerHeight;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    if (winner === null && touches.size >= MIN_PLAYERS && now - lastChange > HOLD_MS) {
+      winner = chooseWinner();
+      winTime = now;
+      if (navigator.vibrate) navigator.vibrate([30, 40, 80]);
+    }
+
+    hint.style.opacity = touches.size ? 0 : 1;
+
+    if (winner !== null && touches.has(winner)) {
+      // Winner's color floods the screen, leaving a hole around their finger
+      const t = touches.get(winner);
+      const k = Math.min(1, (now - winTime) / 450);
+      const ease = 1 - Math.pow(1 - k, 3);
+      const maxR = Math.hypot(w, h);
+      ctx.fillStyle = t.color.hex;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, RADIUS * 1.6 + ease * maxR, 0, Math.PI * 2);
+      ctx.arc(t.x, t.y, RADIUS * 1.6, 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      drawBlob(t, now, 1);
+    } else {
+      // Countdown ring gets tighter as the pick approaches
+      const progress = touches.size >= MIN_PLAYERS ? Math.min(1, (now - lastChange) / HOLD_MS) : 0;
+      for (const t of touches.values()) drawBlob(t, now, progress);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function drawBlob(t, now, progress) {
+    const grow = Math.min(1, (now - t.born) / 200);
+    const pulse = 1 + 0.06 * Math.sin(now / 140 + t.born);
+    const r = RADIUS * grow * pulse;
+    ctx.fillStyle = t.color.hex;
+    ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = t.color.hex;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r + 14 + (1 - progress) * 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(progress, 0.001));
+    ctx.stroke();
+  }
+  requestAnimationFrame(frame);
+
+  // ---- Hidden settings: triple-tap the top-left corner with no fingers down --
+  const settingsEl = document.getElementById('settings');
+  let cornerTaps = [];
+  canvas.addEventListener('pointerdown', e => {
+    if (e.clientX > 70 || e.clientY > 70) return;
+    const now = performance.now();
+    cornerTaps = cornerTaps.filter(t => now - t < 800).concat(now);
+    if (cornerTaps.length >= 3) {
+      cornerTaps = [];
+      touches.clear(); winner = null;
+      openSettings();
+    }
+  });
+
+  const sw = document.getElementById('swatches');
+  const weightEl = document.getElementById('weight');
+  const wval = document.getElementById('wval');
+  const odds = document.getElementById('odds');
+  const firstEl = document.getElementById('first');
+
+  function renderSettings() {
+    sw.innerHTML = '';
+    const none = document.createElement('button');
+    none.className = 'none' + (cfg.favored === null ? ' sel' : '');
+    none.textContent = 'off';
+    none.onclick = () => { cfg.favored = null; save(); renderSettings(); };
+    sw.appendChild(none);
+    for (const p of PALETTE) {
+      const b = document.createElement('button');
+      b.style.background = p.hex;
+      b.title = p.name;
+      if (cfg.favored === p.name) b.className = 'sel';
+      b.onclick = () => { cfg.favored = p.name; save(); renderSettings(); };
+      sw.appendChild(b);
+    }
+    weightEl.value = cfg.weight;
+    const wk = +cfg.weight;
+    wval.textContent = cfg.favored === null ? 'off (fair)' :
+      wk >= MAX_WEIGHT ? 'always wins' : wk === 1 ? 'none (fair)' : wk + '× more likely';
+    if (cfg.favored === null || wk === 1) {
+      odds.textContent = 'Everyone has an equal chance.';
+    } else {
+      odds.innerHTML = [2, 3, 4, 5, 6].map(n => {
+        const p = wk >= MAX_WEIGHT ? 1 : wk / (wk + n - 1);
+        return `${n} players: <b>${Math.round(p * 100)}%</b> (fair ${Math.round(100 / n)}%)`;
+      }).join('<br>');
+    }
+    firstEl.checked = cfg.firstGetsFavored;
+  }
+  weightEl.oninput = () => { cfg.weight = +weightEl.value; save(); renderSettings(); };
+  firstEl.onchange = () => { cfg.firstGetsFavored = firstEl.checked; save(); };
+  function openSettings() { renderSettings(); settingsEl.classList.add('open'); }
+  document.getElementById('close').onclick = () => settingsEl.classList.remove('open');
+})();
+</script>
+</body>
+</html>
